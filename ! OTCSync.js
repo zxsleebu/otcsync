@@ -56,6 +56,7 @@ var GUI = {
 	ColorPickers: [],
 	HotkeyToggle: {},
 	ScriptIsLoaded: false,
+	DrawTime: 0,
 	NOT_VISIBLE: (1 << 0),
 	SAME_LINE: (1 << 1),
 	NOT_SAVEABLE: (1 << 2),
@@ -177,6 +178,8 @@ GUI.Draw = function(){
 		GUI.ProcessDrag();
 	}
 	GUI.ResetHotkeyOverride();
+
+	//Cheat.Print((performance.now() - GUI.DrawTime).toFixed(3) + "\n");
 }
 GUI.DrawMenu = function(){
 	var MenuX = Easing(GUI.X + (GUI.Width / 2), GUI.X, GUI._MenuAnimation[0]);
@@ -443,7 +446,7 @@ GUI.DrawElements = function(){
 GUI.DrawTab = function(x, y, width, height, name){
 	var Animation = GUI._MenuAnimation[1] - ((GUI._MenuAnimation[2] >= 1) ? ((GUI._MenuAnimation[3] - 0.3) / 0.7) : 0);
 	var EasingType = +(GUI.ActiveTab === "" || GUI._AnimatingBack);
-	var Radius = Math.ceil(Easing(7, GUI.Radius, GUI._MenuAnimation[3], EasingType));
+	var Radius = Math.ceil(Easing(7, GUI.Radius, GUI._MenuAnimation[3], !EasingType));
 	Animation = Clamp(Animation, 0, 1);
 	var TabTextSize = Render.TextSizeCustom(name, GUI.Fonts.TabText);
 	var TabColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.FadeColor(GUI.Colors.TabButton, GUI.Colors.TabButtonHover, GUI._TabAnimations[name][0]), Animation, (Animation < 0.05) ? 0 : 255);
@@ -475,11 +478,9 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 	var CheckboxTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var CheckboxTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
 	var CheckboxTextX = x + CheckboxWidth + 4;
-	Render.RoundedRect(x, y + 18, CheckboxWidth, CheckboxHeight, 3, CheckboxBorderColorAnimated);
-	Render.RoundedRect(x + 1, y + 19, CheckboxWidth - 2, CheckboxHeight - 2, 3, CheckboxColorAnimated);
+	Render.SmoothRect(x, y + 18, CheckboxWidth, CheckboxHeight, CheckboxBorderColorAnimated);
+	Render.SmoothRect(x + 1, y + 19, CheckboxWidth - 2, CheckboxHeight - 2, CheckboxColorAnimated);
 	Render.StringCustom(CheckboxTextX, y + 14, 0, name, CheckboxTextColor, GUI.Fonts.Menu);
-	Render.Line(x, y + 19, x, y + CheckboxHeight + 16, CheckboxBorderColorAnimated);
-	Render.Line(x - 1, y + 20, x - 1, y + CheckboxHeight + 15, GUI.Colors.AnimateBackground(GUI.Colors.Background));
 
 	if (UI.IsCursorInBox(x, y + 17, CheckboxWidth + 4 + CheckboxTextSize[0], CheckboxHeight + 2) && GUI._SliderChanging == false && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0&& !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0){
 		GUI._ElementAnimation[id] += 0.06;
@@ -512,8 +513,8 @@ GUI.DrawSlider = function(x, y, name, id){
 	var SliderWidth = GUI.ContainerWidth;
 	var SliderX = x + 18;
 	var SliderY = y + 32;
-	Render.RoundedRect(SliderX, SliderY, SliderWidth, SliderHeight, 3, SliderBorderColorAnimated);
-	Render.RoundedRect(SliderX + 1, SliderY + 1, SliderWidth - 2, SliderHeight - 2, 3, SliderColorAnimated);
+	Render.SmoothRect(SliderX, SliderY, SliderWidth, SliderHeight, SliderBorderColorAnimated);
+	Render.SmoothRect(SliderX + 1, SliderY + 1, SliderWidth - 2, SliderHeight - 2, SliderColorAnimated);
 	var Slider = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
 	var Value = Clamp(Slider.Value, Slider.Min, Slider.Max);
 	var ValueStart = 1;
@@ -537,19 +538,12 @@ GUI.DrawSlider = function(x, y, name, id){
 	}
 
 	Render.StringCustom(SliderX, y + 10, 0, name, SliderTextColor, GUI.Fonts.Menu);
-	if(Progress < 7){
-		Render.FilledRect(SliderX, SliderY + 1, 2, SliderHeight - 2, SliderProgressColor)
-		SliderRadius = 0;
-		SliderX += 2;
-		Progress -= 1;
+	if(Progress < 4){
+		Render.Rect(SliderX + 1, SliderY, 2, SliderHeight, SliderProgressColor);
 	}
 
 	Progress = Clamp(Easing(0, Progress, Animation), 2, SliderWidth);
-	Render.RoundedRect(SliderX, SliderY, Progress, SliderHeight, SliderRadius, SliderProgressColor);
-
-
-
-	if (Progress >= 7) Render.Line(SliderX - 1, SliderY + 2, SliderX - 1, SliderY + SliderHeight - 3, GUI.Colors.AnimateBackground(GUI.Colors.Background));
+	Render.SmoothRect(SliderX, SliderY, Progress, SliderHeight, SliderProgressColor);
 
 	var ValueTextSize = Render.TextSizeCustom(Value + "", GUI.Fonts.Menu);
 	var ValueTextX = Clamp(SliderX + Progress - (ValueTextSize[0] / 2) + 2, SliderX + 3, SliderX + SliderWidth - (ValueTextSize[0] * 0.7) - 2);
@@ -574,12 +568,8 @@ GUI.DrawHotkey = function(x, y, name, id){
 
 	var KeyName = Hotkey.KeyName || "none";
 
-	if(Hotkey.Mode === "always"){
-		KeyName = "on";
-	}
-	if(Hotkey.Mode === "none"){
-		KeyName = "none";
-	}
+	if(Hotkey.Mode === "always") KeyName = "on";
+	if(Hotkey.Mode === "none") KeyName = "none";
 
 	if(GUI._HotkeyIsChanging === id){
 		KeyName = "...";
@@ -589,7 +579,10 @@ GUI.DrawHotkey = function(x, y, name, id){
 		}
 		if(PressedKeys.length && !GUI._ClickBlock){
 			var mode = (Hotkey.Mode === "none") ? Hotkey.DefaultMode : Hotkey.Mode;
-			Hotkey.SetValue([mode, PressedKeys[0][0]]);
+			var pressedkey = PressedKeys[0][0];
+			//genius code ikr
+			if(pressedkey == 27) pressedkey = !+(mode = Hotkey.Mode = "none");
+			else Hotkey.SetValue([mode, pressedkey]);
 			GUI._HotkeyIsChanging = false;
 			GUI._ClickBlock = false;
 		}
@@ -641,10 +634,8 @@ GUI.DrawHotkey = function(x, y, name, id){
 	}
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 
-	Render.RoundedRect(HotkeyX, y + 16, HotkeyWidth, HotkeyHeight, 3, HotkeyBorderColorAnimated);
-	Render.RoundedRect(HotkeyX + 1, y + 17, HotkeyWidth - 2, HotkeyHeight - 2, 3, HotkeyColorAnimated);
-	Render.Line(HotkeyX, y + 17, HotkeyX, y + HotkeyHeight + 14, HotkeyBorderColorAnimated);
-	Render.Line(HotkeyX - 1, y + 18, HotkeyX - 1, y + HotkeyHeight + 16, GUI.Colors.AnimateBackground(GUI.Colors.Background));
+	Render.SmoothRect(HotkeyX, y + 16, HotkeyWidth, HotkeyHeight, HotkeyBorderColorAnimated);
+	Render.SmoothRect(HotkeyX + 1, y + 17, HotkeyWidth - 2, HotkeyHeight - 2, HotkeyColorAnimated);
 
 	Render.StringCustom(HotkeyX + (HotkeyWidth / 2) - (HotkeyKeyNameTextSize[0] / 2), y + 16, 0, KeyName, HotkeyTextColor, GUI.Fonts.HotkeyKeyName);
 }
@@ -681,8 +672,8 @@ GUI.DrawHotkeyMenu = function(){
 	var HotkeyMenuColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, HotkeyMenuAnimation));
 	var HotkeyMenuBorderColor = GUI.Colors.GetColor(GUI.Colors.ActiveElement, Lerp(0, 255, HotkeyMenuTextAnimation));
 	var Hotkey = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._HotkeyMenuOpened];
-	Render.RoundedRect(GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] - 1, HotkeyMenuWidth + 2, HotkeyMenuHeightAnimated + 2, 3, HotkeyMenuBorderColor);
-	Render.RoundedRect(GUI._HotkeyMenuPos[0], GUI._HotkeyMenuPos[1], HotkeyMenuWidth, HotkeyMenuHeightAnimated, 3, HotkeyMenuColorAnimated);
+	Render.SmoothRect(GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] - 1, HotkeyMenuWidth + 2, HotkeyMenuHeightAnimated + 2, HotkeyMenuBorderColor);
+	Render.SmoothRect(GUI._HotkeyMenuPos[0], GUI._HotkeyMenuPos[1], HotkeyMenuWidth, HotkeyMenuHeightAnimated, HotkeyMenuColorAnimated);
 	Render.Line(GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] + 2, GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] + HotkeyMenuHeightAnimated - 2, HotkeyMenuBorderColor);
 	for(Index in HotkeyMenuElements){
 		var HotkeyMenuTextColorAnimated = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, GUI.Colors.HotkeyMenuTextActive, GUI._HotkeyMenuAnimation[2][Index]), Lerp(0, 255, HotkeyMenuTextAnimation));
@@ -906,9 +897,8 @@ GUI.DrawColorMenu = function(){
 	var ColorMenuColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, ColorMenuAnimation));
 	var ColorMenuBorderColor = GUI.Colors.GetColor(GUI.Colors.ActiveElement, Lerp(0, 255, ColorMenuTextAnimation));
 	
-	Render.RoundedRect(GUI._ColorMenuPos[0] - 1, GUI._ColorMenuPos[1] - 1, ColorMenuWidth + 2, ColorMenuHeightAnimated + 2, 3, ColorMenuBorderColor);
-	Render.RoundedRect(GUI._ColorMenuPos[0], GUI._ColorMenuPos[1], ColorMenuWidth, ColorMenuHeightAnimated, 3, ColorMenuColorAnimated);
-	Render.Line(GUI._ColorMenuPos[0] - 1, GUI._ColorMenuPos[1] + 2, GUI._ColorMenuPos[0] - 1, GUI._ColorMenuPos[1] + ColorMenuHeight - 2, ColorMenuBorderColor);
+	Render.SmoothRect(GUI._ColorMenuPos[0] - 1, GUI._ColorMenuPos[1] - 1, ColorMenuWidth + 2, ColorMenuHeightAnimated + 2, ColorMenuBorderColor);
+	Render.SmoothRect(GUI._ColorMenuPos[0], GUI._ColorMenuPos[1], ColorMenuWidth, ColorMenuHeightAnimated, ColorMenuColorAnimated);
 
 	for (Index in ColorMenuElements) {
 		var ColorMenuTextColorAnimated = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, GUI.Colors.HotkeyMenuTextActive, GUI._ColorMenuAnimation[2][Index]), Lerp(0, 255, ColorMenuTextAnimation));
@@ -961,10 +951,8 @@ GUI.DrawDropdown = function (x, y, name, id){
 	var DropdownTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var DropdownY = y + 32;
 	Render.StringCustom(x, y + 12, 0, name, DropdownTextColor, GUI.Fonts.Menu);
-	Render.RoundedRect(x, DropdownY, DropdownWidth, DropdownHeight, 3, DropdownBorderColorAnimated);
-	Render.RoundedRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, 3, DropdownColorAnimated);
-	Render.Line(x, DropdownY  + 1, x, DropdownY + DropdownHeight - 2, DropdownBorderColorAnimated);
-	Render.Line(x - 1, DropdownY + 2, x - 1, DropdownY + DropdownHeight - 3, GUI.Colors.AnimateBackground(GUI.Colors.Background));
+	Render.SmoothRect(x, DropdownY, DropdownWidth, DropdownHeight, DropdownBorderColorAnimated);
+	Render.SmoothRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, DropdownColorAnimated);
 	Render.StringCustom(x + 5, DropdownY + 2, 0, DropdownElements[Element.Value], DropdownTextColor, GUI.Fonts.Menu);
 	Render.Polygon([[x + DropdownWidth - 5 - 6, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 + 1, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 - 3, DropdownY + DropdownHeight / 2 + 2]], DropdownBorderColorAnimated);
 	var OtherElementsActive = !GUI._SliderChanging && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0;
@@ -1022,8 +1010,8 @@ GUI.DrawDropdownSelector = function(){
 	var DropdownColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, DropdownAnimation));
 	var DropdownBorderColor = GUI.Colors.GetColor(GUI.Colors.ActiveElement, Lerp(0, 255, DropdownTextAnimation));
 
-	Render.RoundedRect(GUI._DropdownPos[0], GUI._DropdownPos[1], ElementWidth, DropdownHeightAnimated, 3, DropdownBorderColor);
-	Render.RoundedRect(GUI._DropdownPos[0] + 1, GUI._DropdownPos[1] + 1, ElementWidth - 2, DropdownHeightAnimated - 2, 3, DropdownColorAnimated);
+	Render.SmoothRect(GUI._DropdownPos[0], GUI._DropdownPos[1], ElementWidth, DropdownHeightAnimated, DropdownBorderColor);
+	Render.SmoothRect(GUI._DropdownPos[0] + 1, GUI._DropdownPos[1] + 1, ElementWidth - 2, DropdownHeightAnimated - 2, DropdownColorAnimated);
 	Render.Line(GUI._DropdownPos[0], GUI._DropdownPos[1] + 2, GUI._DropdownPos[0], GUI._DropdownPos[1] + DropdownHeightAnimated - 2, DropdownBorderColor);
 
 	for(Index in DropdownElements){
@@ -1085,6 +1073,8 @@ GUI.ProcessAnimations = function(){
 	}
 	GUI._MenuAnimation[0] = Clamp(GUI._MenuAnimation[0], 0, 1);
 	GUI._MenuAnimation[1] = Clamp(GUI._MenuAnimation[1], 0, 1);
+
+	GUI.DrawTime = performance.now();
 	if(GUI._MenuAnimation[0] === 0) return false;
 	return true;
 }
@@ -1610,6 +1600,10 @@ Render.RoundedRect = function(x, y, width, height, radius, color, experimental){
 		Render.FilledCircle(x + width - radius - 1, y + height - radius - 1,  radius + 1, color);
 	}
 }
+Render.SmoothRect = function(x, y, width, height, color){
+	Render.FilledRect(x, y + 1, width, height - 2, color);
+	Render.FilledRect(x + 1, y, width - 2, height, color);
+}
 Render.Arc = function(x, y, r1, r2, s, d, col){
 	for (var i = s; i < s + d; i++){
 		const rad = i * Math.PI / 180;
@@ -1759,16 +1753,10 @@ function Lerp(a, b, u){
 	return (1 - u) * a + u * b;
 }
 function Easing(a, b, u, t){
-	if(t === null || t === undefined){
-		t = 0;
-	}
+	if(t === null || t === undefined) t = 0;
 	u = Clamp(u, 0, 1);
-	if(!t){
-		u = Math.sqrt(1 - Math.pow(u - 1, 2));
-	}
-	else{
-		u = 1 - Math.sqrt(1 - Math.pow(u, 2));
-	}
+	if(!t) u = Math.sqrt(1 - Math.pow(u - 1, 2));
+	else u = 1 - Math.sqrt(1 - Math.pow(u, 2));
 	return (1 - u) * a + u * b;
 }
 function GetVal(name){
