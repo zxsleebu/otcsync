@@ -811,7 +811,7 @@ GUI.DrawColorPicker = function(){
 	var ColorPickerHeightAnimated = Easing(0, ColorPickerHeight, ColorPickerAnimation);
 	var ColorPickerX = GUI._ColorPickerPos[0] + ColorPickerMargin;
 	var ColorPickerY = GUI._ColorPickerPos[1] + ColorPickerMargin;
-	Render.RoundedRect(GUI._ColorPickerPos[0], GUI._ColorPickerPos[1], ColorPickerWidth, ColorPickerHeightAnimated, 7, ColorPickerColorAnimated);
+	Render.SmoothRect(GUI._ColorPickerPos[0], GUI._ColorPickerPos[1], ColorPickerWidth, ColorPickerHeightAnimated, ColorPickerColorAnimated);
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._ColorPickerActive];
 	var Color = Element.ColorHSV;
 	var ColorRGB = Element.Color;
@@ -827,17 +827,13 @@ GUI.DrawColorPicker = function(){
 		Render.GradientRect(ColorPickerX + (h * ((1 / 3) * 255)), HueSliderY, 255 * (1 / 3), 30, 1, GUI.Colors.GetColor(GUI.Colors.HSVToRGB(h * (1 / 3), 1, 1), ColorPickerSecondaryAnimation * 255), GUI.Colors.GetColor(GUI.Colors.HSVToRGB((h + 1) * (1 / 3), 1, 1), ColorPickerSecondaryAnimation * 255));
 	}
 	
-	Render.FilledRect(ColorPickerX + (Color[0] * 255) - 3, HueSliderY, 7, 32, SliderColor);
-	Render.FilledCircle(ColorPickerX + (Color[0] * 255) + 3 - 3, HueSliderY, 4, SliderColor);
-	Render.FilledCircle(ColorPickerX + (Color[0] * 255) + 3 - 3, HueSliderY + 29, 4, SliderColor);
+	Render.SmoothRect(ColorPickerX + (Color[0] * 255) - 4, HueSliderY - 1, 6, 32, SliderColor);
 
 	var AlphaSliderY = HueSliderY + 30 + ColorPickerMargin * 3;
 
-	Render.GradientRect(ColorPickerX, AlphaSliderY, 255, 30, 1, [ColorRGB[0], ColorRGB[1], ColorRGB[2], 0], GUI.Colors.GetColor(ColorRGB, ColorPickerSecondaryAnimation * 255));
+	Render.GradientRect(ColorPickerX, AlphaSliderY, 255, 30, 1, [ColorRGB[0], ColorRGB[1], ColorRGB[2], 7], GUI.Colors.GetColor(ColorRGB, ColorPickerSecondaryAnimation * 255));
 
-	Render.FilledRect(ColorPickerX + Color[3] - 3, AlphaSliderY, 7, 32, SliderColor);
-	Render.FilledCircle(ColorPickerX + Color[3] + 3 - 3, AlphaSliderY, 4, SliderColor);
-	Render.FilledCircle(ColorPickerX + Color[3] + 3 - 3, AlphaSliderY + 29, 4, SliderColor);
+	Render.SmoothRect(ColorPickerX + Color[3] - 4, AlphaSliderY - 1, 6, 32, SliderColor);
 
 	var CircleColor = [255, 255, 255, ColorPickerSecondaryAnimation * 255];
 
@@ -1212,13 +1208,13 @@ GUI.AddSubtab = function(tab, name){
 	GUI._MenuElements[tab][name] = [];
 	GUI._SubtabAnimations[name] = [0];
 }
-GUI.ElementProto.additional = function(Element, type){
+GUI.ElementProto.additional = function(Element, tab, subtab, type){
 	var name = Element.Name;
 	if(type === "color"){
 		Element.Color = [255, 255, 255, 255];
 		Element.ColorHSV = [0, 0, 1, 255];
 		Element.SetColor = function(value){
-			return GUI.SetColor(tab, subtab, name, value);
+			GUI.SetColor(tab, subtab, name, value);
 		}
 		Element.GetColor = function(){
 			return GUI.GetColor(tab, subtab, name);
@@ -1250,7 +1246,7 @@ GUI.AddCheckbox = function(tab, subtab, name, index){
 		}
 	};
 	Element.additional = function(type){
-		return GUI.ElementProto.additional(Element, type);
+		return GUI.ElementProto.additional(Element, tab, subtab, type);
 	}
 	Element.master = function(master){
 		return GUI.ElementProto.master(Element, master, tab, subtab);
