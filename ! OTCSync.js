@@ -1,7 +1,6 @@
 //GUI Library Definition
 var ScreenSize = Render.GetScreenSize();
 const si = "Script items";
-
 var GUI = {
 	BackgroundOpacity: 0,
 	TextOpacity: 0,
