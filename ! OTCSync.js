@@ -156,7 +156,9 @@ GUI.InitElements = function(){
 						break;
 					case "dropdown": 
 						if(Elem.Flags & GUI.NOT_SAVEABLE) break;
-						Elem.Value = UI.GetValue(si, Element);
+						var val = UI.GetValue(si, Element);
+						if(Elem.Elements[val] === undefined) UI.SetValue(si, Element, val = 0);
+						Elem.Value = val;
 						break;
 				}
 			}
@@ -799,8 +801,6 @@ GUI.DrawColorPicker = function(){
 
 	GUI._ColorPickerAnimation[0] = Clamp(GUI._ColorPickerAnimation[0], 0, 1);
 	GUI._ColorPickerAnimation[1] = Clamp(GUI._ColorPickerAnimation[1], 0, 1);
-
-
 
 	if(GUI._ColorPickerAnimation[0] === 0) return;
 	if(!(GUI._ColorPickerActive in GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab])) return;
@@ -1761,7 +1761,7 @@ function GetVal(name){
 
 //Script start
 
-//Last index is 56
+//Last index is 57
 GUI.Init("OTC SYNC");
 GUI.AddTab("Rage", "A");
 GUI.AddSubtab("Rage", "General");
@@ -1804,6 +1804,7 @@ GUI.AddCheckbox("Rage", "Safe points", "Safe points if slowwalking", 6);
 GUI.AddCheckbox("Rage", "Safe points", "Safe points if lethal", 7);
 GUI.AddCheckbox("Rage", "Safe points", "Safe points on AWP", 48);
 GUI.AddSubtab("Rage", "Doubletap");
+//хуй вам а не беттер дт))0)00)
 //GUI.AddCheckbox("Rage", "Doubletap", "Better DT (addon only)", 51);
 GUI.AddCheckbox("Rage", "Doubletap", "Recharge speed", 9);
 GUI.AddSlider("Rage", "Doubletap", "Recharge ticks", 0, 16, 10).master("Recharge speed");
@@ -1857,9 +1858,14 @@ GUI.AddSubtab("Visuals", "Local");
 GUI.AddCheckbox("Visuals", "Local", "Agent changer", 26);
 GUI.AddDropdown("Visuals", "Local", "CT Agent", ["'TwoTimes' McCoy", "Seal Team 6 Soldier", "Buckshot", "Lt. Commander Ricksaw", "B Squadron Officer", "3rd Commando Company", "Special Agent Ava", "Operator", "Markus Delrow", "Michael Syfers"]).master("Agent changer");
 GUI.AddDropdown("Visuals", "Local", "T Agent", ["Dragomir", "Rezan The Ready", "Maximus", "Blackwolf", "The Doctor' Romanov", "Enforcer", "Slingshot", "Soldier", "The Elite Mr. Muhlik", "Ground Rebel", "Osiris", "Prof. Shahmat"]).master("Agent changer");
-GUI.AddCheckbox("Visuals", "Local", "Arms changer", 25);
-GUI.AddDropdown("Visuals", "Local", "CT Arms", ["Default", "Nigger", "Brown", "Asian", "Red", "Tatoo", "White"]).master("Arms changer");
-GUI.AddDropdown("Visuals", "Local", "T Arms", ["Default", "Nigger", "Brown", "Asian", "Red", "Tatoo", "White"]).master("Arms changer");
+GUI.AddSubtab("Visuals", "Viewmodel");
+GUI.AddCheckbox("Visuals", "Viewmodel", "Arms changer", 25);
+GUI.AddDropdown("Visuals", "Viewmodel", "T Arms", ["Default", "Nigger", "Brown", "Asian", "Red", "Tatoo", "White"]).master("Arms changer");
+GUI.AddDropdown("Visuals", "Viewmodel", "CT Arms", ["Default", "Nigger", "Brown", "Asian", "Red", "Tatoo", "White"]).master("Arms changer");
+var knife_list = ["Default", "Bayonet", "Flip knife", "Gut knife", "Karambit", "M9 Bayonet", "Butterfly", "Falchion", "Navaja", "Shadow daggers", "Stiletto", "Bowie", "Huntsman", "Talon", "Ursus", "Classic", "Paracord", "Survival", "Nomad", "Skeleton"];
+GUI.AddCheckbox("Visuals", "Viewmodel", "Knife changer", 57);
+GUI.AddDropdown("Visuals", "Viewmodel", "T Knife", knife_list).master("Knife changer");
+GUI.AddDropdown("Visuals", "Viewmodel", "CT Knife", knife_list).master("Knife changer");
 GUI.AddSubtab("Visuals", "Other");
 GUI.AddCheckbox("Visuals", "Other", "Better scope", 28).additional("color");
 GUI.AddSlider("Visuals", "Other", "Better scope weight", 1, 6, 2).master("Better scope");
@@ -2658,7 +2664,7 @@ function staticLegs(){
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag)
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1)
+			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 0);
 			break;
 		case fakelag - 1:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", 0)
@@ -3292,7 +3298,7 @@ var agent_list = [
 ]
 function agentChanger() {
 	if (!GUI.GetValue("Visuals", "Local", "Agent changer")) return;
-	if (Cheat.FrameStage() != 2) return;
+	if (!alive()) return;
 	local = Entity.GetLocalPlayer();
 	var team = Entity.GetProp(local, "DT_BaseEntity", "m_iTeamNum")
 	if (team == 2)
@@ -3305,7 +3311,7 @@ function agentChanger() {
 		})[GUI.GetValue("Visuals", "Local", "CT Agent")]) + 1);
 }
 
-Global.RegisterCallback("FrameStageNotify", "agentChanger");
+Global.RegisterCallback("Draw", "agentChanger");
 
 function idealYaw(){
 	var mode = GUI.GetValue("Anti-Aim", "General", "Desync freestanding");
@@ -3797,6 +3803,17 @@ function legPredictionDraw(){
 
 Global.RegisterCallback("Draw", "legPredictionDraw");
 
+function knifeChanger(){
+	if (!GUI.GetValue("Visuals", "Viewmodel", "Knife changer")) return;
+	if (!alive()) return;
+	local = Entity.GetLocalPlayer();
+	var team = Entity.GetProp(local, "DT_BaseEntity", "m_iTeamNum")
+	if (team == 2)
+		UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "T Knife"));
+	else if (team == 3)
+		UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "CT Knife"));
+}
+Global.RegisterCallback("Draw", "knifeChanger");
 
 //Callbacks
 var Draw = GUI.Draw;
