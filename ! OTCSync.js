@@ -42,6 +42,7 @@ var GUI = {
 	_DropdownActive: false,
 	_DropdownPos: [0, 0],
 	_DropdownWidth: 100,
+	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50},
 	ElementProto: {},
 	ContainerWidth: 270,
 	Render: [],
@@ -391,8 +392,8 @@ GUI.DrawElements = function(){
 	var ElementIds = Object.keys(CurrentSubtab);
 	var TopOffset = GUI._AfterLineY - GUI.Y + 1;
 	var ElementOffsetY = 0;
-	for(Index in ElementIds){
-		var ElementId = ElementIds[Index];
+	for(i = 0; i < ElementIds.length; i++){
+		var ElementId = ElementIds[i];
 		var Element = CurrentSubtab[ElementId];
 		if (Element.Flags & GUI.NOT_VISIBLE){
 			GUI._ElementAnimation[ElementId] = 0;
@@ -416,29 +417,29 @@ GUI.DrawElements = function(){
 		}
 		if(!Visible) continue;
 		var ElementX = GUI.X + GUI.SubtabListWidth + 16;
+		if(Element.Flags & GUI.SAME_LINE){
+			ElementX = GUI.X + ((GUI.Width + GUI.SubtabListWidth) / 2);
+			ElementOffsetY -= GUI._ElementOffsets[CurrentSubtab[ElementIds[i - 1]].Type];
+		}
 		var ElementY = GUI.Y + TopOffset + ElementOffsetY + Easing(0, 30, 1 - GUI._MenuAnimation[4], 1);
 		switch(Element.Type){
 			case "checkbox":
 				GUI.DrawCheckbox(ElementX, ElementY, Element.Name, ElementId, Element.State);
-				ElementOffsetY += 30;
 				break;
 			case "slider":
 				GUI.DrawSlider(ElementX, ElementY, Element.Name, ElementId);
-				ElementOffsetY += 40;
 				break;
 			case "hotkey":
 				GUI.DrawHotkey(ElementX, ElementY, Element.Name, ElementId);
-				ElementOffsetY += 30;
 				break;
 			case "color":
 				GUI.DrawColor(ElementX, ElementY, Element.Name, ElementId);
-				ElementOffsetY += 30;
 				break;
 			case "dropdown":
 				GUI.DrawDropdown(ElementX, ElementY, Element.Name, ElementId);
-				ElementOffsetY += 50;
 				break;
 		}
+		ElementOffsetY += GUI._ElementOffsets[Element.Type];
 	}
 	GUI.DrawHotkeyMenu();
 	GUI.DrawColorPicker();
@@ -1761,12 +1762,12 @@ function GetVal(name){
 
 //Script start
 
-//Last index is 57
+//Last index is 58
 GUI.Init("OTC SYNC");
 GUI.AddTab("Rage", "A");
 GUI.AddSubtab("Rage", "General");
 GUI.AddCheckbox("Rage", "General", "Auto peek helper", 0);
-GUI.AddCheckbox("Rage", "General", "Auto enable DT", 52).master("Auto peek helper");
+GUI.AddCheckbox("Rage", "General", "Auto enable DT", 52).master("Auto peek helper").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Rage", "General", "Jumpscout", 1);
 GUI.AddCheckbox("Rage", "General", "Adaptive noscope", 43);
 GUI.AddCheckbox("Rage", "General", "Faster autoscope", 44);
@@ -1825,6 +1826,7 @@ GUI.AddCheckbox("Anti-Aim", "General", "Legit AA on E", 11);
 GUI.AddCheckbox("Anti-Aim", "General", "Legbreaker", 12);
 GUI.AddDropdown("Anti-Aim", "General", "Desync freestanding", ["None", "Peek fake", "Peek real"]);
 GUI.AddCheckbox("Anti-Aim", "General", "Auto invert", 49);
+GUI.AddCheckbox("Anti-Aim", "General", "Adaptive jitter", 58);
 GUI.AddSlider("Anti-Aim", "General", "Legbreaker speed", 1, 5, 2).master("Legbreaker");
 GUI.AddSubtab("Anti-Aim", "AA Presets");
 GUI.AddDropdown("Anti-Aim", "AA Presets", "Preset", ["None", "Desync Jitter", "Desync Sway", "LavaWalk"]);
@@ -1879,7 +1881,7 @@ GUI.AddSlider("Visuals", "Extra", "Aspect ratio", 0, 300, 0);
 GUI.AddSubtab("Visuals", "GUI");
 GUI.AddCheckbox("Visuals", "GUI", "Watermark", 31).additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Indicators", 32);
-GUI.AddCheckbox("Visuals", "GUI", "Indicators centered", 45).master("Indicators");
+GUI.AddCheckbox("Visuals", "GUI", "Indicators centered", 45).master("Indicators").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Visuals", "GUI", "Keybind list", 33).additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Spectator list", 34).additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Hit logs", 35).additional("color");
@@ -3814,6 +3816,17 @@ function knifeChanger(){
 		UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "CT Knife"));
 }
 Global.RegisterCallback("Draw", "knifeChanger");
+
+function adaptiveJitter(){
+	if(!GUI.GetValue("Anti-Aim", "General", "Adaptive jitter")) return;
+	if (!alive()) return;
+	local = Entity.GetLocalPlayer();
+	var s = getVelocity(local);
+	var t = (Math.ceil(Globals.Tickcount() / 4) % 2);
+	var a = Clamp(s / 8, 14, 40);
+	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset", t ? a : -a);
+}
+Global.RegisterCallback("CreateMove", "adaptiveJitter");
 
 //Callbacks
 var Draw = GUI.Draw;
