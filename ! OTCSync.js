@@ -1,7 +1,13 @@
 //GUI Library Definition
+getMethods = function(obj){return Object.getOwnPropertyNames(obj).filter(function(item){
+	return  typeof obj[item] === 'function';
+})};
+function ptr(obj){
+	return Duktape.Pointer(obj).toString();
+}
 var ScreenSize = Render.GetScreenSize();
 const si = "Script items";
-var GUI = {
+var GUI = Duktape.compact({
 	BackgroundOpacity: 0,
 	TextOpacity: 0,
 	AnimationSpeed: 1,
@@ -62,7 +68,7 @@ var GUI = {
 	SAME_LINE: (1 << 1),
 	NOT_SAVEABLE: (1 << 2),
 	CHECKBOX_VIEW: (1 << 3),
-};
+});
 GUI.Init = function(name){
 	GUI.LogoText = name;
 }
@@ -170,6 +176,7 @@ GUI.InitElements = function(){
 	UI.SetValue(si, "loaded", 1);
 }
 GUI.Draw = function(){
+	GUI.CacheVariables();
 	if(GUI.ProcessAnimations()){
 		GUI.InitFonts();
 		GUI.DrawMenu();
@@ -490,7 +497,12 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 		if(Input.IsKeyPressed(1) && !GUI.IsAnimating()){
 			if(!GUI._ClickBlock){
 				GUI._ClickBlock = true;
-				Element.SetValue(!CheckboxState);
+				try{
+					Element.SetValue(!CheckboxState);
+				}
+				catch(err){
+					Cheat.Print(err + "\n");
+				}
 			}
 		}
 		else{
@@ -1198,7 +1210,16 @@ GUI.GetAllPressedKeys = function(){
 	}
 	return pressed;
 }
+var local, isAlive;
+var ScreenSize = Render.GetScreenSize();
+var CursorPos = Input.GetCursorPosition();
+GUI.CacheVariables = function(){
+	ScreenSize = Render.GetScreenSize();
+	CursorPos = Input.GetCursorPosition();
+}
 GUI.CreateMove = function(){
+	local = Entity.GetLocalPlayer();
+	isAlive = Entity.IsAlive(local);
 }
 GUI.AddTab = function(name, icon){
 	GUI._MenuElements[name] = {};
@@ -1209,159 +1230,79 @@ GUI.AddSubtab = function(tab, name){
 	GUI._MenuElements[tab][name] = [];
 	GUI._SubtabAnimations[name] = [0];
 }
-GUI.ElementProto.additional = function(Element, tab, subtab, type){
-	var name = Element.Name;
-	if(type === "color"){
-		Element.Color = [255, 255, 255, 255];
-		Element.ColorHSV = [0, 0, 1, 255];
-		Element.SetColor = function(value){
-			GUI.SetColor(tab, subtab, name, value);
-		}
-		Element.GetColor = function(){
-			return GUI.GetColor(tab, subtab, name);
-		}
+GUI.Element = function(tab, subtab, name, type){
+	this.Id = name + tab[0] + subtab[0];
+	this.Name = name;
+	this.Tab = tab;
+	this.Subtab = subtab;
+	this.Type = type;
+	this.Flags = 0;
+	GUI._ElementAnimation[this.Id] = 0;
+}
+GUI.Element.prototype.GetValue = function(){
+	return GUI.GetValue(this.Tab, this.Subtab, this.Name);
+}
+GUI.Element.prototype.SetValue = function(value){
+	GUI.SetValue(this.Tab, this.Subtab, this.Name, value);
+	return this;
+}
+GUI.Element.prototype.SetColor = function(color){
+	if(this.Type === "color" || this.Type === "checkbox")
+	GUI.SetColor(this.Tab, this.Subtab, this.Name, color);
+	return this;
+}
+GUI.Element.prototype.GetColor = function(){
+	if(this.Type === "color" || this.Type === "checkbox")
+	return GUI.GetColor(this.Tab, this.Subtab, this.Name);
+}
+GUI.Element.prototype.master = function(master){
+	this.Master = master + this.Tab[0] + this.Subtab[0];
+	return this;
+}
+GUI.Element.prototype.additional = function(type){
+	if(this.Type === "checkbox" && type === "color"){
+		this.Color = [255, 255, 255, 255];
+		this.ColorHSV = [0, 0, 1, 255];
 	}
-	return Element;
+	return this;
 }
-GUI.ElementProto.master = function(Element, master, tab, subtab){
-	Element.Master = master + tab[0] + subtab[0];
-	return Element;
-}
-GUI.ElementProto.flags = function(Element, flags){
-	Element.Flags = flags;
-	return Element;
+GUI.Element.prototype.flags = function(flags){
+	this.Flags = flags;
+	return this;
 }
 GUI.AddCheckbox = function(tab, subtab, name, index){
-	var Id = name + tab[0] + subtab[0];
-	var Element = {
-		Type: "checkbox",
-		Name: name,
-		State: false,
-		Flags: 0,
-		Index: index,
-		SetValue: function(value){
-			GUI.SetValue(tab, subtab, name, value);
-		},
-		GetValue: function(){
-			return GUI.GetValue(tab, subtab, name);
-		}
-	};
-	Element.additional = function(type){
-		return GUI.ElementProto.additional(Element, tab, subtab, type);
-	}
-	Element.master = function(master){
-		return GUI.ElementProto.master(Element, master, tab, subtab);
-	}
-	Element.flags = function(flags){
-		return GUI.ElementProto.flags(Element, flags);
-	}
-	GUI._MenuElements[tab][subtab][Id] = Element;
-	GUI._ElementAnimation[Id] = 0;
-	return GUI._MenuElements[tab][subtab][Id];
+	var E = new GUI.Element(tab, subtab, name, "checkbox");
+	E.Index = index;
+	E.State = false;
+	return (GUI._MenuElements[tab][subtab][E.Id] = E);
 }
 GUI.AddSlider = function(tab, subtab, name, min, max, value){
-	var Id = name + tab[0] + subtab[0];
-	var Element = {
-		Type: "slider",
-		Name: name,
-		Value: value || min,
-		Flags: 0,
-		Min: min,
-		Max: max,
-		SetValue: function(value){
-			GUI.SetValue(tab, subtab, name, value);
-		},
-		GetValue: function(){
-			return GUI.GetValue(tab, subtab, name);
-		}
-	};
-	Element.master = function(master){
-		return GUI.ElementProto.master(Element, master, tab, subtab);
-	}
-	Element.flags = function(flags){
-		return GUI.ElementProto.flags(Element, flags);
-	}
-	GUI._MenuElements[tab][subtab][Id] = Element;
-	GUI._ElementAnimation[Id] = 0;
-	return GUI._MenuElements[tab][subtab][Id];
+	var E = new GUI.Element(tab, subtab, name, "slider");
+	E.Value = value || min;
+	E.Min = min;
+	E.Max = max;
+	return (GUI._MenuElements[tab][subtab][E.Id] = E);
 }
 GUI.AddHotkey = function(tab, subtab, name, defaultMode){
-	var Id = name + tab[0] + subtab[0];
-	var Element = {
-		Type: "hotkey",
-		Name: name,
-		State: null,
-		DefaultMode: defaultMode,
-		Mode: "hold",
-		Key: 0,
-		KeyName: "none",
-		Flags: 0,
-		SetValue: function(value){
-			GUI.SetValue(tab, subtab, name, value);
-		},
-		GetValue: function(){
-			return GUI.GetValue(tab, subtab, name);
-		}
-	};
-	Element.master = function(master){
-		return GUI.ElementProto.master(Element, master, tab, subtab);
-	}
-	Element.flags = function(flags){
-		return GUI.ElementProto.flags(Element, flags);
-	}
-	GUI._MenuElements[tab][subtab][Id] = Element;
-	GUI._ElementAnimation[Id] = 0;
-	return GUI._MenuElements[tab][subtab][Id];
+	var E = new GUI.Element(tab, subtab, name, "hotkey");
+	E.State = null;
+	E.DefaultMode = defaultMode;
+	E.Mode = defaultMode || "hold";
+	E.Key = 0;
+	E.KeyName = "none";
+	return (GUI._MenuElements[tab][subtab][E.Id] = E);
 }
 GUI.AddColor = function(tab, subtab, name){
-	var Id = name + tab[0] + subtab[0];
-	var Element = {
-		Type: "color",
-		Name: name,
-		Color: [255, 255, 255, 255],
-		ColorHSV: [0, 0, 1, 255],
-		Flags: 0,
-		SetColor: function(value){
-			GUI.SetColor(tab, subtab, name, value);
-		},
-		GetColor: function(){
-			return GUI.GetColor(tab, subtab, name);
-		}
-	};
-	Element.master = function(master){
-		return GUI.ElementProto.master(Element, master, tab, subtab);
-	}
-	Element.flags = function(flags){
-		return GUI.ElementProto.flags(Element, flags);
-	}
-	GUI._MenuElements[tab][subtab][Id] = Element;
-	GUI._ElementAnimation[Id] = 0;
-	return GUI._MenuElements[tab][subtab][Id];
+	var E = new GUI.Element(tab, subtab, name, "color");
+	E.Color = [255, 255, 255, 255];
+	E.ColorHSV = [0, 0, 1, 255];
+	return (GUI._MenuElements[tab][subtab][E.Id] = E);
 }
 GUI.AddDropdown = function (tab, subtab, name, elements) {
-	var Id = name + tab[0] + subtab[0];
-	var Element = {
-		Type: "dropdown",
-		Name: name,
-		Value: 0,
-		Elements: elements,
-		Flags: 0,
-		SetValue: function(value){
-			GUI.SetValue(tab, subtab, name, value);
-		},
-		GetValue: function(){
-			return GUI.GetValue(tab, subtab, name);
-		}
-	};
-	Element.master = function(master){
-		return GUI.ElementProto.master(Element, master, tab, subtab);
-	}
-	Element.flags = function(flags){
-		return GUI.ElementProto.flags(Element, flags);
-	}
-	GUI._MenuElements[tab][subtab][Id] = Element;
-	GUI._ElementAnimation[Id] = 0;
-	return GUI._MenuElements[tab][subtab][Id];
+	var E = new GUI.Element(tab, subtab, name, "dropdown");
+	E.Elements = elements;
+	E.Value = 0;
+	return (GUI._MenuElements[tab][subtab][E.Id] = E);
 }
 GUI.GetMasterState = function(tab, subtab, name){
 	var Id = name + tab[0] + subtab[0];
@@ -1385,12 +1326,8 @@ GUI.GetMasterState = function(tab, subtab, name){
 	if(Reversed) return !State;
 	else return State;
 }
-
-
 GUI.SetValue = function(tab, subtab, name, value, setnotdef){
-	if (setnotdef === null || (typeof setnotdef) === "undefined") {
-		var setnotdef = true;
-	}
+	if (setnotdef === null || (typeof setnotdef) === "undefined") setnotdef = true;
 	var Id = name + tab[0] + subtab[0];
 	var Element = GUI._MenuElements[tab][subtab][Id];
 	switch(Element.Type){
@@ -1761,8 +1698,10 @@ function GetVal(name){
 }
 
 //Script start
+GUI = Duktape.compact(GUI);
+Duktape.gc();
 
-//Last index is 58
+//Last index is 59
 GUI.Init("OTC SYNC");
 GUI.AddTab("Rage", "A");
 GUI.AddSubtab("Rage", "General");
@@ -1824,7 +1763,7 @@ GUI.AddHotkey("Anti-Aim", "General", "Lowdelta", "hold");
 GUI.AddHotkey("Anti-Aim", "General", "Freestanding", "toggle");
 GUI.AddCheckbox("Anti-Aim", "General", "Legit AA on E", 11);
 GUI.AddCheckbox("Anti-Aim", "General", "Legbreaker", 12);
-GUI.AddDropdown("Anti-Aim", "General", "Desync freestanding", ["None", "Peek fake", "Peek real"]);
+GUI.AddDropdown("Anti-Aim", "General", "Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
 GUI.AddCheckbox("Anti-Aim", "General", "Auto invert", 49);
 GUI.AddCheckbox("Anti-Aim", "General", "Adaptive jitter", 58);
 GUI.AddSlider("Anti-Aim", "General", "Legbreaker speed", 1, 5, 2).master("Legbreaker");
@@ -1835,8 +1774,9 @@ GUI.AddCheckbox("Anti-Aim", "Slowwalk", "Custom slowwalk", 14);
 GUI.AddSlider("Anti-Aim", "Slowwalk", "Slowwalk speed", 5, 80, 60).master("Custom slowwalk");
 GUI.AddCheckbox("Anti-Aim", "Slowwalk", "Slowwalk jitter", 15).master("Custom slowwalk");
 GUI.AddSubtab("Anti-Aim", "Fake Lag");
-GUI.AddCheckbox("Anti-Aim", "Fake Lag", "Static legs fake lag", 47);
-GUI.AddSlider("Anti-Aim", "Fake Lag", "Fake lag choke", 8, 15, 14).master("Static legs fake lag");
+GUI.AddCheckbox("Anti-Aim", "Fake Lag", "Static legs", 47);
+GUI.AddCheckbox("Anti-Aim", "Fake Lag", "Experimental mode", 59).master("Static legs").flags(GUI.SAME_LINE);
+GUI.AddSlider("Anti-Aim", "Fake Lag", "Fake lag choke", 8, 15, 14).master("Static legs");
 GUI.AddCheckbox("Anti-Aim", "Fake Lag", "No fake lag on revolver", 17);
 GUI.AddCheckbox("Anti-Aim", "Fake Lag", "No fake lag on nades", 18);
 GUI.AddSubtab("Anti-Aim", "Matchmaking FD");
@@ -1891,6 +1831,7 @@ GUI.AddTab("Misc", "D");
 GUI.AddSubtab("Misc", "General");
 GUI.AddCheckbox("Misc", "General", "FPS Boost", 36);
 GUI.AddCheckbox("Misc", "General", "Better autostrafer", 37);
+GUI.AddCheckbox("Misc", "General", "Auto crouch in air", 60).master("Better autostrafer");
 GUI.AddCheckbox("Misc", "General", "Name breaker", 38);
 GUI.AddCheckbox("Misc", "General", "Vote revealer", 39);
 GUI.AddCheckbox("Misc", "General", "View enemy chat (not working in MM)", 40);
@@ -1996,18 +1937,15 @@ var csgo_weapons = {
 	"262208": "Revolver"
 };
 function getWeaponName(){
-	var weapon = Entity.GetProp(Entity.GetWeapon(Entity.GetLocalPlayer()), "DT_WeaponBaseItem", "m_iItemDefinitionIndex");
+	var weapon = Entity.GetProp(Entity.GetWeapon(local), "DT_WeaponBaseItem", "m_iItemDefinitionIndex");
 	return csgo_weapons[weapon];
 }
 function isInAir(){
-	var fv = Entity.GetProp(Entity.GetLocalPlayer(), "CBasePlayer", "m_flFallVelocity");
+	var fv = Entity.GetProp(local, "CBasePlayer", "m_flFallVelocity");
 	if(fv < -1 || fv > 1){
 		return true;
 	}
 	return false;
-}
-function alive(){
-	return Entity.IsAlive(Entity.GetLocalPlayer());
 }
 function getVelocity(player){
 	var velocity = Entity.GetProp(player, "CBasePlayer", "m_vecVelocity[0]");
@@ -2022,7 +1960,7 @@ function ExtrapolateTick(player, ticks, hitbox) {
 function IsLethal(player) {
 	var health = Entity.GetProp(player, 'CBasePlayer', 'm_iHealth');
 	thorax_pos = Entity.GetHitboxPosition(player, 4);
-	var local = Entity.GetLocalPlayer();
+	var local = local;
 	result_thorax = Trace.Bullet(local, player, Entity.GetEyePosition(local), thorax_pos);
 	if (result_thorax[1] >= health) return true;
 	result_thorax_extrapolated = Trace.Bullet(local, player, ExtrapolateTick(local, 14, 0), thorax_pos);
@@ -2082,7 +2020,7 @@ function closestTarget(){
 	for(e in enemies) {
 		var e = enemies[e];
 		if(!Entity.IsAlive(e) || Entity.IsDormant(e) || !Entity.IsValid(e)) continue;
-		dists.push([e, calcDist(Entity.GetHitboxPosition(Entity.GetLocalPlayer(), 0), Entity.GetHitboxPosition(e, 0))]);
+		dists.push([e, calcDist(Entity.GetHitboxPosition(local, 0), Entity.GetHitboxPosition(e, 0))]);
 	}
 	dists.sort(function(a, b){
 		return a[1] - b[1];
@@ -2096,8 +2034,8 @@ function canShoot(player){
 		
 	var weapon =  classid == 107 || classid == 108 || classid == 96 || classid == 99 || classid == 112 || classid == 155 || classid == 47;//checking if the selected weapon is knife or nade
 	var clip = Entity.GetProp(index, "DT_BaseCombatWeapon", "m_iClip1");
-	var getbuttons = Entity.GetProp(index,'CBasePlayer', 'm_fFlags');
-	if(weapon || clip == 0 || getbuttons & 1 << 1 )//check if player is jumping or as an empty mag // UserCMD.GetButtons() & (1 << 1)
+	var flags = Entity.GetProp(index,'CBasePlayer', 'm_fFlags');
+	if(weapon || clip == 0 || flags & 1 << 1 )//check if player is jumping or as an empty mag // UserCMD.GetButtons() & (1 << 1)
 		return false;
 	return true;
 }
@@ -2105,7 +2043,6 @@ function getMetricDistance(a, b){
 	return Math.floor(Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2)) * 0.0254);
 }
 function can_shift_shot(ticks_to_shift) {
-	local = Entity.GetLocalPlayer();
 	var wpn = Entity.GetWeapon(local);
 
 	if (local == null || wpn == null)
@@ -2214,7 +2151,6 @@ function rusToEng(str){
 }
 function ChokedCommands(){
 	if(!World.GetServerString()) return 0;
-    local = Entity.GetLocalPlayer();
 	var flSimulationTime = Entity.GetProp(local, "CBaseEntity", "m_flSimulationTime");
 	var flSimDiff = Globals.Curtime() - flSimulationTime;
 	var latency = Local.Latency();
@@ -2290,12 +2226,37 @@ function VectorAngles(forward){
     
     return angles;
 }
+function getWeaponGroup(){
+	var group = "GENERAL";
+	if(!isAlive) return group;
+	var w = getWeaponName();
+	if(w === "SSG08") group = "SCOUT"
+	else if(w === "AWP") group = "AWP";
+	switch(w){
+		case "G3SG1":
+		case "SCAR20":
+			group = "AUTO"; break;
+		case "Deagle":
+		case "Revolver":
+			group = "HEAVY PISTOL"; break;
+		case "Dualies":
+		case "Five Seven":
+		case "Glock":
+		case "USP":
+		case "Tec-9":
+		case "P2000":
+		case "P250":
+		case "CZ-75":
+			group = "PISTOL"; break;
+	}
+	if(!UI.GetValue("Rage", group, "Override default")) group = "GENERAL";
+	return group;
+}
 
 
 
 function enemies(){
 	var enemies = Entity.GetEnemies();
-	var isAlive = alive();
 	if(!isAlive) return;
 	for(enemy in enemies){
 		var enemy = enemies[enemy];
@@ -2319,7 +2280,7 @@ var weapon_groups = ["General", "Pistol", "Heavy Pistol", "Scout", "AWP", "Auto"
 function mindamage(){
 	if(!GUI.GetMasterState("Rage", "Min-DMG Override", "Min-damage override")) return;
 	var active_group = weapon_groups[GUI.GetValue("Rage", "Min-DMG Override", "Min-DMG weapon groups")];
-	var mindamage_active = false;
+	mindamage_active = false;
 	for(weapon in weapon_groups){
 		//Tabbing min-damage sliders
 		weapon = weapon_groups[weapon];
@@ -2361,6 +2322,13 @@ function mindamage(){
 	
 
 }
+function isMindamageActive(){
+	return GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override") || GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2");
+}
+function mindamageGetIndicatorString(){
+	if(!isAlive) return "dmg";
+	return ("dmg: " + UI.GetValue("Rage", getWeaponGroup(), "Targeting", "Minimum damage")) || "dmg";
+}
 
 Global.RegisterCallback("Draw", "mindamage");
 
@@ -2371,7 +2339,7 @@ function jumpscout(enemy){
 var legbreaker_delay = 0;
 var fakelag_leg = false;
 function legbreaker(){
-	if(!alive()) return;
+	if(!isAlive) return;
 	var legbreaker = GUI.GetValue("Anti-Aim", "General", "Legbreaker");
 	if(!legbreaker) return;
 	var legmovement = UI.GetValue("Misc", "GENERAL", "Movement", "Slide walk");
@@ -2399,7 +2367,7 @@ var jitter_bak = UI.GetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset");
 var block_set = false;
 var lowdelta_active = false;
 function lowdelta(){
-	if(!alive() || legit_aa_active) return;
+	if(!isAlive || legit_aa_active) return;
 	if(!GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta")){
 		lowdelta_active = false;
 		if(!block_set){
@@ -2448,7 +2416,7 @@ function safePoints(enemy){
 }
 
 function safeAWP(){
-	if(!alive()) return;
+	if(!isAlive) return;
 	if(!GUI.GetValue("Rage", "Safe points", "Safe points on AWP")) return;
 	if(getWeaponName() === "AWP"){
 		for(i = 0; i <= 12; i++){
@@ -2490,7 +2458,7 @@ function slowwalk(){
 	var slowwalk_jitter = GUI.GetValue("Anti-Aim", "Slowwalk", "Slowwalk jitter");
 	var slowwalk_speed = GUI.GetValue("Anti-Aim", "Slowwalk", "Slowwalk speed");
 	if(slowwalk_jitter) slowwalk_speed += 10;
-	var speed = (slowwalk_speed * (((getVelocity(Entity.GetLocalPlayer()) >= slowwalk_speed) && slowwalk_jitter) ? -1 : 1));
+	var speed = (slowwalk_speed * (((getVelocity(local) >= slowwalk_speed) && slowwalk_jitter) ? -1 : 1));
 	var dir = [0, 0, 0];
 	if(Input.IsKeyPressed(0x57)){
 		dir[0] += speed;
@@ -2545,7 +2513,6 @@ function autoscope(){
 		stop_attack2 = false;
 		Cheat.ExecuteCommand("-attack2");
 	}
-	local = Entity.GetLocalPlayer();
 	var weapon = getWeaponName();
 	if(GUI.GetValue("Rage", "General", "Adaptive noscope")){
 		if((weapon !== "SSG08" && weapon !== "SCAR20" && weapon !== "G3SG1") || isInAir()) return;
@@ -2601,7 +2568,7 @@ Global.RegisterCallback("CreateMove", "autoscope");
 
 function doubletap(){
 	Convar.SetString("cl_windspeed", "100");
-	if(!alive()) return;
+	if(!isAlive) return;
 	var weapon = getWeaponName();
 	if (!GUI.GetValue("Rage", "Doubletap", "Recharge speed") || weapon === "Revolver"){
 		Exploit.EnableRecharge();
@@ -2624,7 +2591,7 @@ var block_set2 = true;
 var autopeek_active = false;
 var freestanding_bak = UI.GetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction");
 function autopeek(){
-	if(!alive()) return;
+	if(!isAlive) return;
 	if(!GUI.GetValue("Rage", "General", "Auto peek helper")) return;
 	autopeek_active = isAutopeeking();
 	var dt = GUI.GetValue("Rage", "General", "Auto enable DT");
@@ -2658,15 +2625,15 @@ function autoPeek2(enemy){
 Global.RegisterCallback("Draw", "autopeek");
 
 function staticLegs(){
-	if(!alive()) return;
-	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs fake lag") || Input.IsKeyPressed(0x20) || isInAir() || exploitsActive("all")) return;
+	if(!isAlive) return;
+	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") || Input.IsKeyPressed(0x20) || isInAir() || exploitsActive("all")) return;
 	var fakelag = GUI.GetValue("Anti-Aim", "Fake Lag", "Fake lag choke");
 	UI.SetValue("Anti-Aim", "Fake-Lag", "Jitter", 0);
 	//if () fakelag = 6;
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag)
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 0);
+			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1 * +!GUI.GetValue("Anti-Aim", "Fake Lag", "Experimental mode"));
 			break;
 		case fakelag - 1:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", 0)
@@ -2717,7 +2684,7 @@ var pitch_bak = UI.GetValue("Anti-Aim", "Extra", "Pitch");
 var restrictions_bak = UI.GetValue("Misc", "PERFORMANCE & INFORMATION", "Information", "Restrictions");
 var at_targets_bak = UI.GetValue("Anti-Aim", "Rage Anti-Aim", "At targets");
 function legitAA(){
-	if(!alive()) return;
+	if(!isAlive) return;
 	if(!GUI.GetValue("Anti-Aim", "General", "Legit AA on E")) return;
 	function use() { Cheat.ExecuteCommand("+use"); use_active = true; }
 	if (Input.IsKeyPressed(69)) {
@@ -2744,7 +2711,7 @@ function legitAA(){
 		AntiAim.SetRealOffset(real_yaw_offset);
 		AntiAim.SetLBYOffset(lower_body_offset);
 		if (getWeaponName() == "C4") { use(); return }
-		var eyepos = Entity.GetEyePosition(Entity.GetLocalPlayer());
+		var eyepos = Entity.GetEyePosition(local);
 		var C4 = Entity.GetEntitiesByClassID(129);
 		if (C4 !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) { use(); return }
 		var hostages = Entity.GetEntitiesByClassID(97);
@@ -2802,10 +2769,9 @@ Global.RegisterCallback("Draw", "autoInvert");
 var mm_fakeduck_active = false;
 var fd_crouch = true;
 function mmFakeduck(){
-	if(!alive()) return;
+	if(!isAlive) return;
 	if(!GUI.GetValue("Anti-Aim", "Matchmaking FD", "Matchmaking FD")) return;
 	var buttons = UserCMD.GetButtons();
-	var local = Entity.GetLocalPlayer();
 	if (!isFD()){
 		mm_fakeduck_active = false;
 		UserCMD.SetButtons(buttons | (1 << 22));
@@ -2859,7 +2825,7 @@ function mmFakeduck(){
 Global.RegisterCallback("CreateMove", "mmFakeduck");
 
 function noFakelag(){
-	if(!alive()) return;
+	if(!isAlive) return;
 	var weapon = getWeaponName();
 	if(legit_aa_active) return;
 	if(GUI.GetValue("Anti-Aim", "Fake Lag", "No fake lag on revolver")){
@@ -2878,7 +2844,11 @@ Global.RegisterCallback("CreateMove", "noFakelag");
 
 function betterAutoStrafer(){
 	if (!GUI.GetValue("Misc", "General", "Better autostrafer")) return;
-	UI.SetValue("Misc", "GENERAL", "Movement", "Turn speed", Clamp(Convar.GetString("sv_airaccelerate") * 12), 100, 400);
+	if (!isAlive) return;
+	var speed = Clamp(Convar.GetString("sv_airaccelerate") * 12);
+	UI.SetValue("Misc", "GENERAL", "Movement", "Turn speed", speed, 100, 400);
+	if(!GUI.GetValue("Misc", "General", "Auto crouch in air") || speed < 300) return;
+	UI.SetValue("Misc", "GENERAL", "Movement", "Crouch in air", +!(Entity.GetProp(local, 'CBasePlayer', 'm_fFlags') & 1));
 }
 
 Global.RegisterCallback("CreateMove", "betterAutoStrafer");
@@ -2888,9 +2858,8 @@ var block_set6 = false;
 var betterScopeActive = false;
 function betterScope() {
 	if (!GUI.GetValue("Visuals", "Other", "Better scope")) return;
-	local = Entity.GetLocalPlayer();
 	var scoped = Entity.GetProp(local, 'DT_CSPlayer', 'm_bIsScoped');
-	if (!alive() || !World.GetServerString() || !scoped) return;
+	if (!isAlive || !World.GetServerString() || !scoped) return;
 	var startX = Math.floor(ScreenSize[0] / 2 + 1);
 	var startY = Math.floor(ScreenSize[1] / 2 + 1);
 	var sizeX = GUI.GetValue("Visuals", "Other", "Better scope length");
@@ -2906,11 +2875,10 @@ function betterScope() {
 function betterScope2() {
 	if (!GUI.GetValue("Visuals", "Other", "Better scope")) return;
 	if (Cheat.FrameStage() != 5) return;
-	local = Entity.GetLocalPlayer();
 	var scoped = Entity.GetProp(local, 'DT_CSPlayer', 'm_bIsScoped');
-	UI.SetValue("Visual", "WORLD", "View", "FOV while scoped", UI.IsHotkeyActive("Visual", "WORLD", "View", "Thirdperson"));
+	UI.SetValue("Visual", "WORLD", "View", "FOV while scoped", /*UI.IsHotkeyActive("Visual", "WORLD", "View", "Thirdperson")*/false);
 	UI.SetValue("Visual", "WORLD", "Entities", "Removals", UI.GetValue("Visual", "WORLD", "Entities", "Removals") &~ (1 << 2));
-	if (!alive() || !World.GetServerString()) {
+	if (!isAlive || !World.GetServerString()) {
 		Convar.SetFloat("r_drawvgui", 1);
 		block_set6 = false;
 		return;
@@ -2948,7 +2916,7 @@ const vectorDistance = function (vec, vec2) {
 function radians_to_degrees(radians) { return radians * (180 / Math.PI); }
 
 function grenade_warning_tick() {
-	if (!GUI.GetValue("Visuals", "World", "Nade prediction") || !alive()) return;
+	if (!GUI.GetValue("Visuals", "World", "Nade prediction") || !isAlive) return;
 	entities = Entity.GetEntitiesByClassID(9).concat(Entity.GetEntitiesByClassID(114));
 	for (var i = 0; i < entities.length; i++) {
 		entity = entities[i]
@@ -3134,7 +3102,6 @@ function grenade_warning_tick() {
 function draw_warning(xzy) {
 	var x = Render.WorldToScreen(xzy[0])[0]
 	var y = Render.WorldToScreen(xzy[0])[1]
-	var local = Entity.GetLocalPlayer();
 	var circle_color = [0, 0, 0, 190];
 	const draw_ind = function (x, y, str, oof, xzy) {
 		var distance = Math.round(vectorDistance(Entity.GetRenderOrigin(local), xzy) / 50)
@@ -3177,7 +3144,7 @@ function draw_warning(xzy) {
 
 	if (x < 0 || x > ScreenSize[0] || y > ScreenSize[1] || y < 0) {
 		var yaw = (Local.GetViewAngles()[1])
-		var myorig = Entity.GetRenderOrigin(Entity.GetLocalPlayer())
+		var myorig = Entity.GetRenderOrigin(local)
 		var orig = xzy[0]
 		var x = orig[0] - myorig[0]
 		var z = orig[1] - myorig[1]
@@ -3194,21 +3161,17 @@ function draw_warning(xzy) {
 }
 
 function nade_draw() {
-	if (!GUI.GetValue("Visuals", "World", "Nade prediction") || !alive()) return;
+	if (!GUI.GetValue("Visuals", "World", "Nade prediction") || !isAlive) return;
 	var color = GUI.GetColor("Visuals", "World", "Nade prediction");
 	for (var i = 0; i < lines.length; i++) {
 		var line = lines[i]
 		var alpha = (line[2] - Globals.Tickcount())
 		if (alpha > 0) {
-			if (Render.WorldToScreen(line[1])[1] > 0 && Render.WorldToScreen(line[0])[1] > 0 && Render.WorldToScreen(line[1])[1] < ScreenSize[1] && Render.WorldToScreen(line[0])[1] < ScreenSize[1]) {
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], color)
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], color)
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], [color[0], color[1], color[2], 190])
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], [color[0], color[1], color[2], 190])
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], color)
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], color)
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], color)
-				Render.Line(Render.WorldToScreen(line[0])[0], Render.WorldToScreen(line[0])[1], Render.WorldToScreen(line[1])[0], Render.WorldToScreen(line[1])[1], color)
+			var w0 = Render.WorldToScreen(line[0]);
+			var w1 = Render.WorldToScreen(line[1]);
+			if (w1[1] > 0 && w0[1] > 0 && w1[1] < ScreenSize[1] && w0[1] < ScreenSize[1]) {
+				Render.Line(w0[0] - 1, w0[1] - 1, w1[0] - 1, w1[1] - 1, GUI.Colors.GetColor(color, 190));
+				Render.Line(w0[0], w0[1], w1[0], w1[1], color);
 			}
 		}
 	}
@@ -3238,22 +3201,21 @@ Cheat.RegisterCallback('CreateMove', 'grenade_warning_tick')
 Cheat.RegisterCallback('Draw', 'nade_draw')
 
 var indicators_paths = [
-//	0				1														2					3					4
-	["dmg",			["Rage", "Min-DMG Override", "Min-damage override"],	GUI.IsHotkeyActive,	[241, 239, 214],	0],
-	["dmg 2",		["Rage", "Min-DMG Override", "Min-damage override 2"],	GUI.IsHotkeyActive,	[241, 239, 214],	0],
-	["dt",			["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
-	["hide",		["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
-	["backshoot",	["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
-	["fd",			["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
-	["ld", 			["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
-	["baim",		["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
-	["safe",		["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
-	["legit aa",	[],														isLegitAAActive,	[244, 205, 166],	0],
-	["freestand",	["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[165, 200, 228],	0],
-	["auto",		["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
+//	0								1														2					3					4
+	[mindamageGetIndicatorString,	[],														isMindamageActive,	[241, 239, 214],	0],
+	["dt",							["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
+	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
+	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
+	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
+	["ld", 							["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
+	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
+	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
+	["legit aa",					[],														isLegitAAActive,	[244, 205, 166],	0],
+	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[165, 200, 228],	0],
+	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
 ]					
 function indicators(){
-	if(!GUI.GetValue("Visuals", "GUI", "Indicators") || !alive()) return;
+	if(!GUI.GetValue("Visuals", "GUI", "Indicators") || !isAlive) return;
 	if(Input.IsKeyPressed(27)) local_buymenu_opened = false;
 	var font = Render.AddFont("Segoe UI", 7, 600);
 	var speed = 14;
@@ -3263,11 +3225,11 @@ function indicators(){
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
 	for(indicator_path in indicators_paths){
 		var indicator = indicators_paths[indicator_path];
-		if(indicator[1] == null) continue;
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 1, centered, indicator[0], [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin), centered, indicator[0], [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
+		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin), centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
 		y += (indicator[4] / 255) * margin;
 	}
 }
@@ -3300,8 +3262,7 @@ var agent_list = [
 ]
 function agentChanger() {
 	if (!GUI.GetValue("Visuals", "Local", "Agent changer")) return;
-	if (!alive()) return;
-	local = Entity.GetLocalPlayer();
+	if (!isAlive) return;
 	var team = Entity.GetProp(local, "DT_BaseEntity", "m_iTeamNum")
 	if (team == 2)
 		UI.SetValue("Misc", "SKINS", "Player", "Player model", agent_list.indexOf(agent_list.filter(function(a){
@@ -3320,7 +3281,7 @@ function idealYaw(){
 	if (!mode) return;
 	if (!Input.IsKeyPressed(65) && !Input.IsKeyPressed(68)) return;
 	var direction = !Input.IsKeyPressed(65) && Input.IsKeyPressed(68)
-	direction = (mode - 1) ? !direction : direction;
+	direction = (--mode === 1 || (mode === 2 && !isAutopeeking())) ? !direction : direction;
 	if (UI.IsHotkeyActive("Anti-Aim", "Fake angles", "Inverter") && direction) UI.ToggleHotkey("Anti-Aim", "Fake angles", "Inverter");
 	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", !direction)
 }
@@ -3339,7 +3300,7 @@ var keybinds = [
 function keybindFixer() {
 	if (!GUI.GetValue("Misc", "Keybinds fixer", "Enabled (change original binds key)")) return;
 	for (keybind in keybinds) {
-		const keybind = keybinds[keybind];
+		keybind = keybinds[keybind];
 		if (!GUI.GetMasterState.apply(null, keybind[0])) continue;
 		var keybind_state = GUI.IsHotkeyActive.apply(null, keybind[0]);
 		var original_state = UI.IsHotkeyActive.apply(null, keybind[1]);
@@ -3386,7 +3347,7 @@ function keybindList(){
 	var margin = 15;
 	var binds_y = keybind_list_y + keybind_list_height + 1;
 	var font = Render.AddFont("Segoe UI Semilight", 9, 200);
-	if(World.GetServerString() && alive())
+	if(World.GetServerString() && isAlive)
 	for (keybind_path in keybinds_paths) {
 		var keybind = keybinds_paths[keybind_path];
 		if (keybind[1] == null) continue;
@@ -3479,7 +3440,7 @@ function spectatorList(){
 		var player = players[player];
 		if(!(player in spectators_alpha)) spectators_alpha[player] = 0;
 		var observer = Entity.GetProp(player, "DT_BasePlayer", "m_hObserverTarget");
-		var active = (observer && observer !== "m_hObserverTarget" && !Entity.IsAlive(player) && !Entity.IsDormant(player) && player !== local) && ((alive() && observer == local) || (!alive() && observer == Entity.GetProp(local, "DT_BasePlayer", "m_hObserverTarget")));
+		var active = (observer && observer !== "m_hObserverTarget" && !Entity.IsAlive(player) && !Entity.IsDormant(player) && player !== local) && ((isAlive && observer == local) || (!isAlive && observer == Entity.GetProp(local, "DT_BasePlayer", "m_hObserverTarget")));
 		if(active) visible = true;
 		if ((spectators_alpha[player] = Clamp(spectators_alpha[player] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var specs_y = specs_y - margin + Math.floor((spectators_alpha[player] / 255) * margin);
@@ -3590,7 +3551,6 @@ function AWPswitch(){
 Global.RegisterCallback("CreateMove", "AWPswitch");
 
 function AWPswitchShot(){
-	local = Entity.GetLocalPlayer();
 	if(GUI.GetValue("Rage", "General", "AWP switch after shot") && !isAutopeeking() && Entity.GetEntityFromUserID(Event.GetInt("userid")) == local && getWeaponName() == "AWP"){
 		Cheat.ExecuteCommand("slot5"); Cheat.ExecuteCommand("slot4"); Cheat.ExecuteCommand("slot2"); Cheat.ExecuteCommand("slot3");
 		should_switch = true;
@@ -3603,7 +3563,7 @@ var ticks_to_setup = null;
 var ticks_to_setup_player = null;
 
 function localServerSetupStart(){
-	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== Entity.GetLocalPlayer()) return;
+	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local) return;
 	ticks_to_setup = Globals.Tickcount() + 32;
 }
 
@@ -3635,7 +3595,7 @@ function localServerSetup(){
 Global.RegisterCallback("Draw", "localServerSetup");
 
 function localPlayerSetup(){
-	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== Entity.GetLocalPlayer()) return;
+	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local) return;
 	Cheat.ExecuteCommand("god");
 	Cheat.ExecuteCommand("give weapon_molotov");
     Cheat.ExecuteCommand("give weapon_hegrenade");
@@ -3748,7 +3708,7 @@ Global.RegisterCallback("CreateMove", "restore_shot");
 var last_leg_pos = [0, 0, 0];
 function legPrediction(){
 	if(!GUI.GetValue("Rage", "General", "Leg prediction")) return;
-	if(!alive() || getVelocity(local) > 30 || !canShoot(local)) return;
+	if(!isAlive || getVelocity(local) > 30 || !canShoot(local)) return;
 	var enemies = Entity.GetEnemies();
 	var local_pos = Entity.GetHitboxPosition(local, 0);
 	var ticks = 1;
@@ -3806,30 +3766,49 @@ function legPredictionDraw(){
 Global.RegisterCallback("Draw", "legPredictionDraw");
 
 function knifeChanger(){
-	if (!GUI.GetValue("Visuals", "Viewmodel", "Knife changer")) return;
-	if (!alive()) return;
-	local = Entity.GetLocalPlayer();
+	if (!GUI.GetValue("Visuals", "Viewmodel", "Knife changer") || !isAlive) return;
 	var team = Entity.GetProp(local, "DT_BaseEntity", "m_iTeamNum")
-	if (team == 2)
-		UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "T Knife"));
-	else if (team == 3)
-		UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "CT Knife"));
+	if (team == 2) UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "T Knife"));
+	else if (team == 3) UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "CT Knife"));
 }
 Global.RegisterCallback("Draw", "knifeChanger");
 
 function adaptiveJitter(){
 	if(!GUI.GetValue("Anti-Aim", "General", "Adaptive jitter")) return;
-	if (!alive()) return;
-	local = Entity.GetLocalPlayer();
-	var s = getVelocity(local);
-	var t = (Math.ceil(Globals.Tickcount() / 4) % 2);
-	var a = Clamp(s / 8, 14, 40);
+	if (!isAlive) return;
+	var min = 15;
+	var max = 45;
+	var v = getVelocity(local);
+	var t = (Math.ceil(Globals.Tickcount() / 3) % 2);
+	var a = Clamp(Math.ceil(v / 8), min, max);
+	if(isSlowwalking() || isInAir()) a = Clamp(a + 10, min, max);
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset", t ? a : -a);
 }
 Global.RegisterCallback("CreateMove", "adaptiveJitter");
 
+function viewEnemyChat(){
+	if(!GUI.GetValue("Misc", "General", "View enemy chat (not working in MM)")) return;
+    var user_id = Entity.GetEntityFromUserID(Event.GetInt("userid"));
+	if (!Entity.IsEnemy(user_id)) return;
+
+    var text = Event.GetString("text");
+    var team = Entity.GetProp(user_id, "CBaseEntity", "m_iTeamNum");
+    var name = Entity.GetName(user_id);
+    var alive = Entity.IsAlive(user_id) ? " " : " *DEAD* ";
+    var string;
+
+	if(team === 2) string = " \x09" + alive +  name + " :\x01 " + text;
+	else if (team === 3) string = " \x09\x0B " + alive + name + " :\x01 " + text;
+	else return;
+    Cheat.PrintChat(string + "\n");
+}
+
+Cheat.RegisterCallback("player_say", "viewEnemyChat");
+
 //Callbacks
 var Draw = GUI.Draw;
 var CreateMove = GUI.CreateMove;
+
+Duktape.gc();
 Global.RegisterCallback("Draw", "Draw");
 Global.RegisterCallback("CreateMove", "CreateMove");
