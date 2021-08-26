@@ -540,7 +540,6 @@ GUI.DrawSlider = function(x, y, name, id){
 	if ((UI.IsCursorInBox(SliderX, y + 30, SliderWidth, SliderHeight + 2) && GUI._SliderChanging == false && GUI._HotkeyMenuOpened == false && GUI._DropdownAnimation[0] === 0 && GUI._HotkeyMenuAnimation[0] === 0 && !GUI._ColorPickerOpened) || GUI._SliderChanging == id){
 		if(Input.IsKeyPressed(1)){
 			GUI._SliderChanging = id;
-			var CursorPos = Input.GetCursorPosition();
 			Value = Clamp(Math.round(((CursorPos[0] - SliderX) / Percent) + Slider.Min), Slider.Min, Slider.Max);
 			
 			Progress = Value * Percent - (Slider.Min * Percent);
@@ -608,7 +607,6 @@ GUI.DrawHotkey = function(x, y, name, id){
 	var HotkeyKeyNameTextSize = Render.TextSizeCustom(KeyName, GUI.Fonts.HotkeyKeyName);
 	var HotkeyWidth = Clamp(HotkeyKeyNameTextSize[0] + 4, 16, 100);
 	var HotkeyX = Clamp(HotkeyTextX + HotkeyTextSize[0] + 6, HotkeyTextX + HotkeyMinX - HotkeyWidth, GUI.X + GUI.Width - HotkeyWidth - 4);
-	var CursorPos = Input.GetCursorPosition();
 
 	var HotkeyMenuWidth = 40;
 	var HotkeyMenuElementsHeight = 14;
@@ -750,7 +748,6 @@ GUI.DrawColor = function(x, y, name, id, isAdditional){
 	var ColorPickerMargin = 5;
 	var ColorPickerWidth = (ColorPickerMargin * 2) + 255;
 	var ColorPickerHeight = (ColorPickerMargin * 9) + 255 + 30 + 30;
-	var CursorPos = Input.GetCursorPosition();
 	var Activate = (GUI._ColorPickerPos[0] >= ColorBoxX && GUI._ColorPickerPos[0] <= ColorBoxX + ColorBoxWidth && GUI._ColorPickerPos[1] >= y + 18 && GUI._ColorPickerPos[1] <= y + 18 + ColorBoxHeight);
 
 	var ColorMenuWidth = 40;
@@ -828,7 +825,6 @@ GUI.DrawColorPicker = function(){
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._ColorPickerActive];
 	var Color = Element.ColorHSV;
 	var ColorRGB = Element.Color;
-	var CursorPos = Input.GetCursorPosition();
 	for(v = 0; v < 255; v++){
 		var opacity = Clamp(ColorPickerSecondaryAnimation * 255 * 2 - v, 0, 255);
 		Render.GradientRect(ColorPickerX, ColorPickerY + v, 255, 1, 1, GUI.Colors.GetColor(GUI.Colors.HSVToRGB(Color[0], 1, 1 - (v / 255)), opacity), GUI.Colors.GetColor(GUI.Colors.HSVToRGB(Color[0], 0, 1 - (v / 255)), opacity));
@@ -1046,7 +1042,6 @@ GUI.DrawDropdownSelector = function(){
 }
 GUI.ProcessDrag = function(){
 	if(!UI.IsMenuOpen()) return;
-	var CursorPos = Input.GetCursorPosition();
 	var HeaderLogoSize = Render.TextSizeCustom(GUI.LogoText, GUI.Fonts.HeaderLogo);
 	if (!Input.IsKeyPressed(0x01) || GUI.IsAnimating() || GUI._AnimatingElements || keybind_list_is_moving){
 		GUI._MenuIsMoving = false;
@@ -1067,7 +1062,6 @@ GUI.ProcessDrag = function(){
 	GUI.Y = Clamp(GUI.Y, -28, ScreenSize[1] - 5);
 }
 GUI.ProcessAnimations = function(){
-	ScreenSize = Render.GetScreenSize();
 	if(UI.IsMenuOpen()){
 		if(GUI._MenuAnimation[0] > 0.8 * GUI.AnimationSpeed){
 			GUI._MenuAnimation[1] += 0.07 * GUI.AnimationSpeed;
@@ -1211,7 +1205,6 @@ GUI.GetAllPressedKeys = function(){
 	return pressed;
 }
 var local, isAlive;
-var ScreenSize = Render.GetScreenSize();
 var CursorPos = Input.GetCursorPosition();
 GUI.CacheVariables = function(){
 	ScreenSize = Render.GetScreenSize();
