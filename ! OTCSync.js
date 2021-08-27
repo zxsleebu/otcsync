@@ -1694,7 +1694,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 59
+//Last index is 61
 GUI.Init("OTC SYNC");
 GUI.AddTab("Rage", "A");
 GUI.AddSubtab("Rage", "General");
@@ -1759,6 +1759,7 @@ GUI.AddCheckbox("Anti-Aim", "General", "Legbreaker", 12);
 GUI.AddDropdown("Anti-Aim", "General", "Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
 GUI.AddCheckbox("Anti-Aim", "General", "Auto invert", 49);
 GUI.AddCheckbox("Anti-Aim", "General", "Adaptive jitter", 58);
+GUI.AddCheckbox("Anti-Aim", "General", "No desync on DT", 61);
 GUI.AddSlider("Anti-Aim", "General", "Legbreaker speed", 1, 5, 2).master("Legbreaker");
 GUI.AddSubtab("Anti-Aim", "AA Presets");
 GUI.AddDropdown("Anti-Aim", "AA Presets", "Preset", ["None", "Desync Jitter", "Desync Sway", "LavaWalk"]);
@@ -1945,10 +1946,11 @@ function getVelocity(player){
 	return Math.sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
 }
 function ExtrapolateTick(player, ticks, hitbox) {
-	var head = Entity.GetHitboxPosition(player, hitbox),
-		velocity = Entity.GetProp(player, 'CBasePlayer', 'm_vecVelocity[0]'),
+		var velocity = Entity.GetProp(player, 'CBasePlayer', 'm_vecVelocity[0]'),
 		array = [];
-	return array[0] = head[0] + velocity[0] * Globals.TickInterval() * ticks, array[1] = head[1] + velocity[1] * Globals.TickInterval() * ticks, array[2] = head[2] + velocity[2] * Globals.TickInterval() * ticks, array;
+	if(hitbox.length > 2) var pos = hitbox;
+	else var pos = Entity.GetHitboxPosition(player, hitbox)
+	return array[0] = pos[0] + velocity[0] * Globals.TickInterval() * ticks, array[1] = pos[1] + velocity[1] * Globals.TickInterval() * ticks, array[2] = pos[2] + velocity[2] * Globals.TickInterval() * ticks, array;
 }
 function IsLethal(player) {
 	var health = Entity.GetProp(player, 'CBasePlayer', 'm_iHealth');
@@ -2025,9 +2027,12 @@ function canShoot(player){
 	var index = Entity.GetWeapon(player)
 	var classid = Entity.GetClassID(index);
 		
-	var weapon =  classid == 107 || classid == 108 || classid == 96 || classid == 99 || classid == 112 || classid == 155 || classid == 47;//checking if the selected weapon is knife or nade
+	var weapon =  classid == 107 || classid == 108 || classid == 96 || classid == 99 || classid == 112 || classid == 155 || classid == 47; //checking if the selected weapon is knife or nade
 	var clip = Entity.GetProp(index, "DT_BaseCombatWeapon", "m_iClip1");
-	var flags = Entity.GetProp(index,'CBasePlayer', 'm_fFlags');
+	var flags = Entity.GetProp(index, 'CBasePlayer', 'm_fFlags');
+	var curtime = Global.Curtime();
+	if(curtime < Entity.GetProp(local, "CCSPlayer", "m_flNextAttack") || curtime < Entity.GetProp(index, "CBaseCombatWeapon", "m_flNextPrimaryAttack"))
+		return false;
 	if(weapon || clip == 0 || flags & 1 << 1 )//check if player is jumping or as an empty mag // UserCMD.GetButtons() & (1 << 1)
 		return false;
 	return true;
@@ -2219,6 +2224,66 @@ function VectorAngles(forward){
     
     return angles;
 }
+
+function DEG2RAD(degree) {
+    return (Math.PI / 180) * degree;
+}
+
+function AnglesVector(angle) {
+    pitch = angle[0];
+    yaw = angle[1];
+    return [Math.cos(DEG2RAD(pitch)) * Math.cos(DEG2RAD(yaw)), Math.cos(DEG2RAD(pitch)) * Math.sin(DEG2RAD(yaw)), -Math.sin(DEG2RAD(pitch))];
+}
+
+function getRandomInt(min, max) {
+    return Math.floor(getRandomFloat(min, max));
+}
+function getRandomFloat(min, max) {
+    return Math.random() * (max - min) + min;
+}
+function hitChance(target, hitchance, hitbox){
+	target = Entity.GetEnemies()[0];
+    maxSeed = 256;
+	var start = Entity.GetRenderOrigin(local);
+	start[2] = Entity.GetHitboxPosition(local, 0)[2];
+    var aimangles = VectorAngles(VectorSubtract(Entity.GetHitboxPosition(target, hitbox), start));
+
+    var hits = 0;
+    const hitsNeed = maxSeed * hitchance / 100;
+
+    const weapSpread = Local.GetSpread();
+    const weapInaccuracy = Local.GetInaccuracy();
+
+    for (i = 0; i < maxSeed; i++){
+        var inaccuracy = getRandomFloat(0, 1);
+        var spread = getRandomFloat(0, 1);
+        const spreadX = getRandomFloat(0, 3 * Math.PI);
+        const spreadY = getRandomFloat(0, 3 * Math.PI);
+
+        inaccuracy *= weapInaccuracy;
+        spread *= weapSpread;
+
+        var spreadAngles = [(Math.cos(spreadX) * inaccuracy) + (Math.cos(spreadY) * spread), (Math.sin(spreadX) * inaccuracy) + (Math.sin(spreadY) * spread)];
+		aimangles = [aimangles[0] + spreadAngles[0], aimangles[1] + spreadAngles[1]];
+        var angles = AnglesVector(aimangles);
+		end = [start[0] + angles[0] * 1000, start[1] + angles[1] * 1000, start[2] + angles[2] * 1000];
+        var trace = Trace.Bullet(local, target, start, end);
+		var w0 = Render.WorldToScreen(start);
+		var w1 = Render.WorldToScreen(end);
+		//Render.Line(w0[0], w0[1], w1[0], w1[1], [0, 255, 255, 255]);
+		
+		if (trace[0] == target)
+		    hits++;
+
+		if (hits >= hitsNeed)
+		    return true;
+
+		if ((maxSeed - i + hits) < hitsNeed)
+		    return false;
+    }
+    return false;
+}
+
 function getWeaponGroup(){
 	var group = "GENERAL";
 	if(!isAlive) return group;
@@ -3628,7 +3693,7 @@ Global.RegisterCallback("CreateMove", "clantag");
 var defensive_pos = [];
 var defensiveDTClantagState = false;
 function defensiveDT(){
-	if((!GUI.GetValue("Rage", "Doubletap", "Lag peek (pizdec)") && !exploitsActive("dt")) || isAutopeeking()) return;
+	if((!GUI.GetValue("Rage", "Doubletap", "Lag peek (pizdec)") || !exploitsActive("dt")) || isAutopeeking()) return;
 	var enemies = Entity.GetEnemies();
 	var ticks = GUI.GetValue("Rage", "Doubletap", "Extrapolate ticks");
 	var pos = Entity.GetHitboxPosition(local, 0);
@@ -3688,10 +3753,11 @@ function drawDefensive(){
 Global.RegisterCallback("Draw", "drawDefensive");
 
 var predict_shot = false;
-
+var restore_viewangles = false;
 function restore_shot() {
     if(predict_shot){
         Cheat.ExecuteCommand("-attack");
+		Local.SetViewAngles(viewangles_bak);
         predict_shot = false;
     }
 }
@@ -3699,32 +3765,39 @@ function restore_shot() {
 Global.RegisterCallback("CreateMove", "restore_shot");
 
 var last_leg_pos = [0, 0, 0];
+var viewangles_bak = Local.GetViewAngles();
 function legPrediction(){
+	var shoot = true;
 	if(!GUI.GetValue("Rage", "General", "Leg prediction")) return;
-	if(!isAlive || getVelocity(local) > 30 || !canShoot(local)) return;
+
+	var innacuracy = Local.GetInaccuracy() * 100;
+	innacuracy *= Local.GetSpread() * 450;
+	if(!isAlive || getVelocity(local) > 50 || !canShoot(local)) shoot = false;
 	var enemies = Entity.GetEnemies();
 	var local_pos = Entity.GetHitboxPosition(local, 0);
 	var ticks = 1;
 	for(enemy in enemies){
 		enemy = enemies[enemy];
-		if(Entity.IsDormant(enemy) || !Entity.IsAlive(enemy) || !Entity.IsValid(enemy) || getVelocity(enemy) < 30) continue;
+		if (Entity.IsDormant(enemy) || !Entity.IsAlive(enemy) || !Entity.IsValid(enemy) || !shoot || innacuracy > 1.4 || getVelocity(enemy) < 30) shoot = false;
 		var predicted_leg_pos = [ExtrapolateTick(enemy, ticks, 11), ExtrapolateTick(enemy, ticks, 12)];
 		var leg_pos = [Entity.GetHitboxPosition(enemy, 11), Entity.GetHitboxPosition(enemy, 12)];
-		for(predicted_leg in predicted_leg_pos){
-			if(Trace.Bullet(local, enemy, local_pos, leg_pos[predicted_leg])[1] > 0){
-				var getaimpunch = Entity.GetProp(local, "CBasePlayer", "m_aimPunchAngle");
-				//var aimpunch = [getaimpunch[0], getaimpunch[1], 0];
-				var aimangles = VectorAngles(VectorSubtract(predicted_leg_pos[predicted_leg], local_pos));
+		if(shoot) for(predicted_leg in predicted_leg_pos){
+			if(Trace.Bullet(local, enemy, local_pos, leg_pos[predicted_leg])[1] > 0 /*&& hitChance(enemy, 50, hitboxes[predicted_leg])*/){
+				var start = Entity.GetRenderOrigin(local);
+				start[2] = Entity.GetHitboxPosition(local, 0)[2];
+				var aimangles = VectorAngles(VectorSubtract(predicted_leg_pos[predicted_leg], ExtrapolateTick(local, 2, start)));
 				last_leg_pos = predicted_leg_pos[predicted_leg];
-				//aimangles[0] -= aimpunch[0] * 2;
-				//aimangles[1] -= aimpunch[1] * 2;
 				Cheat.ExecuteCommand("+attack");
-				UserCMD.SetAngles(aimangles);
+				Local.SetViewAngles(aimangles);
+				var mov = UserCMD.GetMovement();
+				UserCMD.SetMovement([mov[0] * -1, mov[1] * -1, mov[2] * -1]);
     			predict_shot = true;
 				break;
 			}
+			else shoot = false;
 		}
 	}
+	if(!shoot) viewangles_bak = Local.GetViewAngles();
 }
 
 Global.RegisterCallback("CreateMove", "legPrediction");
@@ -3771,10 +3844,12 @@ function adaptiveJitter(){
 	if (!isAlive) return;
 	var min = 15;
 	var max = 45;
+	var f = UI.GetValue("Anti-Aim", "Fake angles", "Enabled") || AntiAim.GetOverride();
 	var v = getVelocity(local);
 	var t = (Math.ceil(Globals.Tickcount() / 3) % 2);
-	var a = Clamp(Math.ceil(v / 8), min, max);
-	if(isSlowwalking() || isInAir()) a = Clamp(a + 10, min, max);
+	var a = Clamp(Math.ceil(v / (f ? 8 : 5)), min, max);
+	if(isSlowwalking()) a = Clamp(a + 10, min, max);
+	if (isInAir() || Input.IsKeyPressed(0x20)) a = Clamp(a + 10, min, max - 15);
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset", t ? a : -a);
 }
 Global.RegisterCallback("CreateMove", "adaptiveJitter");
@@ -3797,6 +3872,13 @@ function viewEnemyChat(){
 }
 
 Cheat.RegisterCallback("player_say", "viewEnemyChat");
+
+function noDesync(){
+	if (!GUI.GetValue("Anti-Aim", "General", "No desync on DT")) return;
+	UI.SetValue("Anti-Aim", "Fake angles", "Enabled", !exploitsActive("dt"));
+}
+
+Cheat.RegisterCallback("CreateMove", "noDesync");
 
 //Callbacks
 var Draw = GUI.Draw;
