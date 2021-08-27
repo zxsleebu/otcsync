@@ -1816,6 +1816,9 @@ GUI.AddSubtab("Visuals", "GUI");
 GUI.AddCheckbox("Visuals", "GUI", "Watermark", 31).additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Indicators", 32);
 GUI.AddCheckbox("Visuals", "GUI", "Indicators centered", 45).master("Indicators").flags(GUI.SAME_LINE);
+GUI.AddDropdown("Visuals", "GUI", "Indicators type", ['default', 'new', 'new v2']).master("Indicators");
+// кринж ебанный, эта хуйня вместо того что бы нормально и адекватно заменять цвет, ломает нахуй индикаторы, слива посмотри пожалуйста
+//GUI.AddCheckbox("Visuals", "GUI", "Custom color", 56).master("Indicators").additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Keybind list", 33).additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Spectator list", 34).additional("color");
 GUI.AddCheckbox("Visuals", "GUI", "Hit logs", 35).additional("color");
@@ -2384,8 +2387,8 @@ function isMindamageActive(){
 	return GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override") || GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2");
 }
 function mindamageGetIndicatorString(){
-	if(!isAlive) return "dmg";
-	return ("dmg: " + UI.GetValue("Rage", getWeaponGroup(), "Targeting", "Minimum damage")) || "dmg";
+	if(!isAlive) return "DMG";
+	return ("DMG: " + UI.GetValue("Rage", getWeaponGroup(), "Targeting", "Minimum damage")) || "dmg";
 }
 
 Global.RegisterCallback("Draw", "mindamage");
@@ -3261,26 +3264,30 @@ Cheat.RegisterCallback('Draw', 'nade_draw')
 var indicators_paths = [
 //	0								1														2					3					4
 	[mindamageGetIndicatorString,	[],														isMindamageActive,	[241, 239, 214],	0],
-	["dt",							["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
-	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
-	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
-	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
-	["ld", 							["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
-	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
-	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
-	["legit aa",					[],														isLegitAAActive,	[244, 205, 166],	0],
-	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[165, 200, 228],	0],
-	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
-]					
+	["DT",							["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
+	["HIDE",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
+	["BACKSHOOT",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
+	["DUCK",						["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
+	["BAIM",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
+	["SAFE",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
+	["PEEK",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
+]	
 function indicators(){
 	if(!GUI.GetValue("Visuals", "GUI", "Indicators") || !isAlive) return;
 	if(Input.IsKeyPressed(27)) local_buymenu_opened = false;
+	if (GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta")){ var aa = "LOW DELTA"} else if (isLegitAAActive()){ var aa = "LEGIT AA"} else if (GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding")){ var aa = "FREESTANDING"} else { var aa = "DYNAMIC"}
 	var font = Render.AddFont("Segoe UI", 7, 600);
 	var speed = 14;
-	var margin = 8
+	var margin = 10
 	var x = ScreenSize[0] / 2;
 	var y = ScreenSize[1] / 2 + 9 + 10;
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
+	var add = centered ? 0 : 5
+	var addx = centered ? 1 : 2
+	// кринж, два отдельных вара, потому что из за рендера вт
+	var addy = centered ? 1 : -20
+	x = x + add
+	if(GUI.GetValue("Visuals", "GUI", "Indicators type") == 0){
 	for(indicator_path in indicators_paths){
 		var indicator = indicators_paths[indicator_path];
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
@@ -3289,6 +3296,38 @@ function indicators(){
 		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
 		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin), centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
 		y += (indicator[4] / 255) * margin;
+		}
+	}
+	else if(GUI.GetValue("Visuals", "GUI", "Indicators type") == 1){
+	Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font)
+	Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font)
+	Render.StringCustom(x, y, centered, "OTCSYNC", [193, 199, 255, 255], font)
+	Render.StringCustom(x, y + 10, centered, aa, [193, 199, 255, 255], font)
+	for(indicator_path in indicators_paths){
+		var indicator = indicators_paths[indicator_path];
+		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
+		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
+		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 21, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 20, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
+		y += (indicator[4] / 255) * margin;
+		}
+	}
+	else if(GUI.GetValue("Visuals", "GUI", "Indicators type") == 2){
+	Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font)
+	Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font)
+	Render.StringCustom(x - 12 / addy, y, centered, "OTC", isInverted() ? [193, 199, 255, 255] : [255,255,255,255], font)
+	Render.StringCustom(x + 9 * addx, y, centered, "SYNC", isInverted() ? [255,255,255,255] : [193, 199, 255, 255], font)
+	Render.StringCustom(x, y + 10, centered, aa, [193, 199, 255, 255], font)
+	for(indicator_path in indicators_paths){
+		var indicator = indicators_paths[indicator_path];
+		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
+		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
+		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 21, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 20, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
+		y += (indicator[4] / 255) * margin;
+		}
 	}
 }
 
