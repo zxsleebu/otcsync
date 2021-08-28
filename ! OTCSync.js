@@ -29,6 +29,7 @@ var GUI = Duktape.compact({
 	Height: 324,
 	Radius: 10,
 	SubtabListWidth: 150,
+	SubtabListWidthScaled: 150,
 	_MenuElements: {},
 	_TabIcons: {},
 	_TabAnimations: {},
@@ -60,15 +61,17 @@ var GUI = Duktape.compact({
 	_DropdownActive: false,
 	_DropdownPos: [0, 0],
 	_DropdownWidth: 100,
+	_DropdownSelectingElement: false,
 	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50},
 	ElementProto: {},
-	ContainerWidth: 270,
+	ContainerWidth: 270, //in gui.subtablistdraw
 	Render: [],
 	Paths: [],
 	Fonts: [],
 	ActiveTab: "",
 	ActiveSubtab: "",
 	NewActiveSubtab: "",
+	_Scale: 1,
 	Checkboxes: [],
 	Hotkeys: [],
 	OverridenHotkeys: [],
@@ -140,7 +143,7 @@ GUI.InitElements = function(){
 		}
 	}
 
-	UI.AddSliderInt("gui_x", -GUI.Width, ScreenSize[0]);
+	UI.AddSliderInt("gui_x", -GUI.Scale(GUI.Width), ScreenSize[0]);
 	UI.AddSliderInt("gui_y", 0, ScreenSize[1]);
 
 	UI.SetEnabled(si, "gui_x", 0);
@@ -204,10 +207,10 @@ GUI.Draw = function(){
 	//Cheat.Print((performance.now() - GUI.DrawTime).toFixed(3) + "\n");
 }
 GUI.DrawMenu = function(){
-	var MenuX = Easing(GUI.X + (GUI.Width / 2), GUI.X, GUI._MenuAnimation[0]);
-	var MenuY = Easing(GUI.Y + (GUI.Height / 2), GUI.Y, GUI._MenuAnimation[0]);
-	var MenuHeight = Easing(0, GUI.Height, GUI._MenuAnimation[0]);
-	var MenuWidth = Easing(0, GUI.Width, GUI._MenuAnimation[0]);
+	var MenuX = Easing(GUI.X + (GUI.Scale(GUI.Width) / 2), GUI.X, GUI._MenuAnimation[0]);
+	var MenuY = Easing(GUI.Y + ((GUI.Height) / 2), GUI.Y, GUI._MenuAnimation[0]);
+	var MenuHeight = Easing(0, GUI.Scale(GUI.Height), GUI._MenuAnimation[0]);
+	var MenuWidth = Easing(0, GUI.Scale(GUI.Width), GUI._MenuAnimation[0]);
 	Render.RoundedRect(MenuX, MenuY, MenuWidth, MenuHeight, GUI.Radius, GUI.Colors.Background);
 	var logo = GUI.LogoText;
 	if(!GUI.ScriptIsLoaded) logo = "Reload the script!";
@@ -215,21 +218,21 @@ GUI.DrawMenu = function(){
 	var LogoColor = GUI.Colors.AnimateBackground(GUI.Colors.Logo);
 	if(GUI.ActiveTab !== "" && !GUI._AnimatingBack) return;
 	
-	Render.StringCustom(GUI.X + (GUI.Width / 2) - (LogoSize[0] / 2), GUI.Y + 70 + (!GUI.ScriptIsLoaded * 30), 0, logo, LogoColor, GUI.Fonts.Logo);
+	Render.StringCustom(GUI.X + (GUI.Scale(GUI.Width) / 2) - (LogoSize[0] / 2), GUI.Y + 70 + (!GUI.ScriptIsLoaded * 30), 0, logo, LogoColor, GUI.Fonts.Logo);
 	if(!GUI.ScriptIsLoaded){
 		var text = 'Press "Reload all" button in Scripts';
 		var TextSize = Render.TextSizeCustom(text, GUI.Fonts.TabText);
 		var TextColor = GUI.Colors.AnimateBackground(GUI.Colors.TabText);
-		Render.StringCustom(GUI.X + (GUI.Width / 2) - (TextSize[0] / 2), GUI.Y + 140, 0, text, TextColor, GUI.Fonts.TabText);
+		Render.StringCustom(GUI.X + (GUI.Scale(GUI.Width) / 2) - (TextSize[0] / 2), GUI.Y + 140, 0, text, TextColor, GUI.Fonts.TabText);
 	}
 }
 GUI.DrawTabList = function(){
 	var TabNames = Object.keys(GUI._MenuElements);
-	var TabY = GUI.Y + GUI.Height * 0.45;
-	var TabWidth = 80;
-	var TabHeight = 80;
-	var TabMargin = 18;
-	var TabStart = (GUI.Width - ((TabWidth + TabMargin) * TabNames.length)) / 2;
+	var TabY = GUI.Y + GUI.Scale(GUI.Height * 0.45);
+	var TabWidth = GUI.Scale(80);
+	var TabHeight = TabWidth;
+	var TabMargin = GUI.Scale(18);
+	var TabStart = (GUI.Scale(GUI.Width) - ((TabWidth + TabMargin) * TabNames.length)) / 2;
 	var TabFadeSpeed = 0.04 * GUI.AnimationSpeed;
 	for(TabName in GUI._MenuElements){
 		if(GUI._MenuAnimation[2] >= 0.95) break;
@@ -269,27 +272,19 @@ GUI.DrawTabList = function(){
 		var TabX = GUI.X + TabStart + TabMargin / 2 + ((TabWidth + TabMargin) * Index);
 		var ActiveTabX = Easing(TabX, GUI.X, GUI._MenuAnimation[2], EasingType);
 		var ActiveTabY = Easing(TabY, GUI.Y, GUI._MenuAnimation[2], EasingType);
-		var ActiveTabWidth = Easing(TabWidth, GUI.Width, GUI._MenuAnimation[2], EasingType);
-		var ActiveTabHeight = Easing(TabHeight, GUI.Height, GUI._MenuAnimation[2], EasingType);
+		var ActiveTabWidth = Easing(TabWidth, GUI.Scale(GUI.Width), GUI._MenuAnimation[2], EasingType);
+		var ActiveTabHeight = Easing(TabHeight, GUI.Scale(GUI.Height), GUI._MenuAnimation[2], EasingType);
 		if(!GUI._AnimatingBack){
 			GUI._TabAnimations[GUI.ActiveTab][0] = Clamp(GUI._TabAnimations[GUI.ActiveTab][0] + TabFadeSpeed * 2, 0, 1);
 			GUI._TabAnimations[GUI.ActiveTab][1] = Clamp(GUI._TabAnimations[GUI.ActiveTab][1] + TabFadeSpeed * 2, 0, 1);
-			if(GUI._MenuAnimation[2] >= 1){
-				GUI._MenuAnimation[3] += 0.05 * GUI.AnimationSpeed;
-			}
-			else{
-				GUI._MenuAnimation[2] += 0.05 * GUI.AnimationSpeed;
-			}
+			if(GUI._MenuAnimation[2] >= 1) GUI._MenuAnimation[3] += 0.05 * GUI.AnimationSpeed;
+			else GUI._MenuAnimation[2] += 0.05 * GUI.AnimationSpeed;
 		}
-		if(GUI._MenuAnimation[3] < 1){
-			GUI.DrawTab(ActiveTabX, ActiveTabY, ActiveTabWidth, ActiveTabHeight, GUI.ActiveTab);
-		}
+		if(GUI._MenuAnimation[3] < 1) GUI.DrawTab(ActiveTabX, ActiveTabY, ActiveTabWidth, ActiveTabHeight, GUI.ActiveTab);
 	}
 	if(GUI._AnimatingBack){
 		GUI._MenuAnimation[3] -= 0.05 * GUI.AnimationSpeed;
-		if(GUI._MenuAnimation[3] <= 0){
-			GUI._MenuAnimation[2] -= 0.05 * GUI.AnimationSpeed;
-		}
+		if(GUI._MenuAnimation[3] <= 0) GUI._MenuAnimation[2] -= 0.05 * GUI.AnimationSpeed;
 	}
 	GUI._MenuAnimation[2] = Clamp(GUI._MenuAnimation[2], 0, 1);
 	GUI._MenuAnimation[3] = Clamp(GUI._MenuAnimation[3], 0, 1);
@@ -312,26 +307,24 @@ GUI.DrawHeader = function(){
 
 	var ArrowAfterLogoX = HeaderLogoX + HeaderLogoSize[0] + 5;
 	var ArrowAfterLogoY = HeaderLogoY + HeaderLogoSize[1] / 2 + 2;
-	var ArrowAfterLogoWidth = 4;
-	var ArrowAfterLogoHeight = 6;
+	var ArrowAfterLogoWidth = GUI.Scale(4);
+	var ArrowAfterLogoHeight = GUI.Scale(6);
 	var ArrowColor = GUI.Colors.AnimateBackground(GUI.Colors.ArrowColor);
 	GUI.DrawRightArrow(ArrowAfterLogoX, ArrowAfterLogoY, ArrowAfterLogoWidth, ArrowAfterLogoHeight, ArrowColor);
 
 	var TabNameColor = GUI.Colors.AnimateBackground(GUI.Colors.Logo);
-	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + 5, HeaderLogoY + 5, 0, GUI._TabIcons[GUI.ActiveTab], TabNameColor, GUI.Fonts.HeaderTabIcon);
-	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + 22, HeaderLogoY + 1, 0, GUI.ActiveTab, TabNameColor, GUI.Fonts.HeaderTabText);
 
-	Render.Line(GUI.X, HeaderLineY, GUI.X + GUI.Width, HeaderLineY, LineColor);
+	var IconMarginY = (GUI._Scale > 1) ? 1 : (GUI._Scale < 1) ? -1 : 0;
+	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + 5, HeaderLogoY + GUI.Scale(5 + IconMarginY), 0, GUI._TabIcons[GUI.ActiveTab], TabNameColor, GUI.Fonts.HeaderTabIcon);
+	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + GUI.Scale(22), HeaderLogoY + GUI.Scale(2) - 1, 0, GUI.ActiveTab, TabNameColor, GUI.Fonts.HeaderTabText);
 
-	if (UI.IsCursorInBox(HeaderLogoX, HeaderLogoY + 5, HeaderLogoSize[0], HeaderLogoSize[1]) && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && !GUI._ColorMenuOpened){
-		if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._MenuIsMoving && GUI._SliderChanging === false){
-			GUI._AnimatingBack = true;
-		}
+	Render.Line(GUI.X, HeaderLineY, GUI.X + GUI.Scale(GUI.Width), HeaderLineY, LineColor);
+
+	if (UI.IsCursorInBox(HeaderLogoX, HeaderLogoY + GUI.Scale(4), HeaderLogoSize[0], HeaderLogoSize[1]) && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && !GUI._ColorMenuOpened){
+		if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._MenuIsMoving && GUI._SliderChanging === false) GUI._AnimatingBack = true;
 		GUI._HeaderAnimation[0] += 0.06;
 	}
-	else{
-		GUI._HeaderAnimation[0] -= 0.06;
-	}
+	else GUI._HeaderAnimation[0] -= 0.06;
 
 	GUI._HeaderAnimation[0] = Clamp(GUI._HeaderAnimation[0], 0, 1);
 
@@ -339,7 +332,7 @@ GUI.DrawHeader = function(){
 	var Username = rusToEng(Username.charAt(0).toUpperCase() + Username.slice(1));
 	if(!mustDisplayString(Username, GUI.Fonts.Username, 11)) return;
 	var UsernameTextSize = Render.TextSizeCustom(Username, GUI.Fonts.Username);
-	var UsernameX = GUI.X + GUI.Width - 6 - UsernameTextSize[0];
+	var UsernameX = GUI.X + GUI.Scale(GUI.Width) - 6 - UsernameTextSize[0];
 	var UsernameColor = GUI.Colors.AnimateBackground(GUI.Colors.Username);
 
 	Render.StringCustom(UsernameX, GUI.Y + 2, 0, Username, UsernameColor, GUI.Fonts.Username);
@@ -355,27 +348,30 @@ GUI.DrawHeader = function(){
 }
 GUI.DrawSubtabList = function(){
 	if(GUI.ActiveTab === "" || GUI._MenuAnimation[2] < 1) return;
-	var SubtabListWidth = GUI.SubtabListWidth;
+	GUI.SubtabListWidthScaled = GUI.Scale(GUI.SubtabListWidth);
+	GUI.ContainerWidth = GUI.Scale(GUI.Width - GUI.SubtabListWidth) - 44;
+
 	var SubtabListColor = GUI.Colors.AnimateBackground(GUI.Colors.SubtabList);
-	var SubtabHeight = 40;
+	var SubtabHeight = GUI.Scale(40);
 	var LineColor = GUI.Colors.AnimateBackground(GUI.Colors.Line);
 	var TopOffset = GUI._AfterLineY - GUI.Y + 1;
-	Render.FilledRect(GUI.X + GUI.Radius, GUI.Y + TopOffset, SubtabListWidth - GUI.Radius, GUI.Height - TopOffset, SubtabListColor);
-	Render.FilledRect(GUI.X, GUI.Y + TopOffset, SubtabListWidth, GUI.Height - TopOffset - GUI.Radius, SubtabListColor);
-	Render.FilledCircle(GUI.X + GUI.Radius, GUI.Y + GUI.Height - GUI.Radius - 1, GUI.Radius + 1, SubtabListColor);
-	Render.Line(GUI.X + SubtabListWidth, GUI.Y + TopOffset, GUI.X + SubtabListWidth, GUI.Y + GUI.Height, LineColor);
+	Render.FilledRect(GUI.X + GUI.Radius, GUI.Y + TopOffset, GUI.SubtabListWidthScaled - GUI.Radius, GUI.Scale(GUI.Height) - TopOffset, SubtabListColor);
+	Render.FilledRect(GUI.X, GUI.Y + TopOffset, GUI.SubtabListWidthScaled, GUI.Scale(GUI.Height) - TopOffset - GUI.Radius, SubtabListColor);
+	Render.FilledCircle(GUI.X + GUI.Radius, GUI.Y + GUI.Scale(GUI.Height) - GUI.Radius - 1, GUI.Radius + 1, SubtabListColor);
+	Render.Line(GUI.X + GUI.SubtabListWidthScaled, GUI.Y + TopOffset, GUI.X + GUI.SubtabListWidthScaled, GUI.Y + GUI.Scale(GUI.Height), LineColor);
 	var CurrentTab = GUI._MenuElements[GUI.ActiveTab];
 	var SubtabNames = Object.keys(CurrentTab);
+
 	for(SubtabName in CurrentTab){
 		var Index = SubtabNames.indexOf(SubtabName);
 		var SubtabY = GUI.Y + TopOffset + (SubtabHeight * Index);
 		var SubtabTextColor = GUI.Colors.AnimateBackground(GUI.Colors.FadeColor(GUI.Colors.SubtabText, GUI.Colors.Text, ((GUI.ActiveSubtab === SubtabName) ? GUI._MenuAnimation[4] : GUI._SubtabAnimations[SubtabName])));
 		if(GUI.ActiveSubtab === SubtabName){
 			var SubtabActiveColor = GUI.Colors.AnimateBackground(GUI.Colors.FadeColor(GUI.Colors.SubtabList, GUI.Colors.SubtabListActive, GUI._MenuAnimation[4]));
-			Render.FilledRect(GUI.X, SubtabY, SubtabListWidth, SubtabHeight, SubtabActiveColor);
+			Render.FilledRect(GUI.X, SubtabY, GUI.SubtabListWidthScaled, SubtabHeight, SubtabActiveColor);
 		}
-		Render.StringCustom(GUI.X + 14, SubtabY + 10, 0, SubtabName, SubtabTextColor, GUI.Fonts.SubtabText);
-		if (UI.IsCursorInBox(GUI.X, SubtabY, SubtabListWidth, SubtabHeight) && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened){
+		Render.StringCustom(GUI.X + 14, SubtabY + GUI.Scale(10), 0, SubtabName, SubtabTextColor, GUI.Fonts.SubtabText);
+		if (UI.IsCursorInBox(GUI.X, SubtabY, GUI.SubtabListWidthScaled, SubtabHeight) && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened){
 			GUI._SubtabAnimations[SubtabName] += 0.04;
 			if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._SliderChanging){
 				if(GUI.ActiveSubtab !== SubtabName){
@@ -385,9 +381,7 @@ GUI.DrawSubtabList = function(){
 				}
 			}
 		}
-		else{
-			GUI._SubtabAnimations[SubtabName] -= 0.04;
-		}
+		else GUI._SubtabAnimations[SubtabName] -= 0.04;
 		GUI._SubtabAnimations[SubtabName] = Clamp(GUI._SubtabAnimations[SubtabName], 0, 1);
 		
 	}
@@ -400,9 +394,7 @@ GUI.DrawSubtabList = function(){
 			GUI.ActiveSubtab = GUI.NewActiveSubtab;
 		}
 	}
-	else if(GUI._MenuAnimation[3] >= 1){
-		GUI._MenuAnimation[4] += 0.06;
-	}
+	else if(GUI._MenuAnimation[3] >= 1) GUI._MenuAnimation[4] += 0.06;
 	GUI._MenuAnimation[4] = Clamp(GUI._MenuAnimation[4], 0, 1);
 }
 GUI.DrawElements = function(){
@@ -420,10 +412,8 @@ GUI.DrawElements = function(){
 		}
 		var Visible = true;
 		if(Element.Master){
-			if(Element.Master[0] === "!")
-				var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][Element.Master.slice(1)]
-			else
-				var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][Element.Master];
+			if(Element.Master[0] === "!") var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][Element.Master.slice(1)]
+			else var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][Element.Master];
 
 			Visible = GUI.GetMasterState(GUI.ActiveTab, GUI.ActiveSubtab, Element.Master);
 
@@ -435,10 +425,10 @@ GUI.DrawElements = function(){
 			if(Element.Type === "checkbox" && !Visible) Element.SetValue(false);
 		}
 		if(!Visible) continue;
-		var ElementX = GUI.X + GUI.SubtabListWidth + 16;
+		var ElementX = GUI.X + GUI.SubtabListWidthScaled + 16;
 		if(Element.Flags & GUI.SAME_LINE){
-			ElementX = GUI.X + ((GUI.Width + GUI.SubtabListWidth) / 2);
-			ElementOffsetY -= GUI._ElementOffsets[CurrentSubtab[ElementIds[i - 1]].Type];
+			ElementX = GUI.X + ((GUI.Scale(GUI.Width) + GUI.SubtabListWidthScaled) / 2);
+			ElementOffsetY -= GUI.Scale(GUI._ElementOffsets[CurrentSubtab[ElementIds[i - 1]].Type]);
 		}
 		var ElementY = GUI.Y + TopOffset + ElementOffsetY + Easing(0, 30, 1 - GUI._MenuAnimation[4], 1);
 		switch(Element.Type){
@@ -458,7 +448,7 @@ GUI.DrawElements = function(){
 				GUI.DrawDropdown(ElementX, ElementY, Element.Name, ElementId);
 				break;
 		}
-		ElementOffsetY += GUI._ElementOffsets[Element.Type];
+		ElementOffsetY += GUI.Scale(GUI._ElementOffsets[Element.Type]);
 	}
 	GUI.DrawHotkeyMenu();
 	GUI.DrawColorPicker();
@@ -476,9 +466,9 @@ GUI.DrawTab = function(x, y, width, height, name){
 	var TabIconColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.FadeColor(GUI.Colors.TabText, GUI.Colors.Text, GUI._TabAnimations[name][1]), Animation, Animation * 255);
 	if (name == GUI.ActiveTab) TabTextColor = TabIconColor;
 	Render.RoundedRect(x, y, width, height, Radius, TabColor);
-	Render.StringCustom(x + (width / 2) - (TabTextSize[0] / 2), y + (height / 2) + 20 - Easing(0, 20, GUI._TabAnimations[name][0]), 0, name, TabTextColor, GUI.Fonts.TabText);
+	Render.StringCustom(x + (width / 2) - (TabTextSize[0] / 2), y + (height / 2) + GUI.Scale(20) - Easing(0, GUI.Scale(20), GUI._TabAnimations[name][0]), 0, name, TabTextColor, GUI.Fonts.TabText);
 	var IconSize = Render.TextSizeCustom(GUI._TabIcons[name], GUI.Fonts.TabIcon);
-	Render.StringCustom(x + (width / 2) - (IconSize[0] / 2), y + (height / 2) - 18 - Easing(0, 14, GUI._TabAnimations[name][0]), 0, GUI._TabIcons[name], TabIconColor, GUI.Fonts.TabIcon);
+	Render.StringCustom(x + (width / 2) - (IconSize[0] / 2), y + (height / 2) - GUI.Scale(18) - Easing(0, GUI.Scale(14), GUI._TabAnimations[name][0]), 0, GUI._TabIcons[name], TabIconColor, GUI.Fonts.TabIcon);
 }
 GUI.DrawRightArrow = function(x, y, width, height, color){
 	Render.Line(x, y - 1, x + width, y + height / 2, color);
@@ -486,9 +476,12 @@ GUI.DrawRightArrow = function(x, y, width, height, color){
 	Render.Line(x, y + height + 1, x + width, y + height / 2, color);
 	Render.Line(x + 1, y + height + 1, x + 1 + width, y + height / 2, color);
 }
+GUI.Scale = function(int){
+	return Math.ceil(int * GUI._Scale);
+}
 GUI.DrawCheckbox = function(x, y, name, id, state){
-	var CheckboxWidth = 14;
-	var CheckboxHeight = 14;
+	var CheckboxWidth = GUI.Scale(14);
+	var CheckboxHeight = CheckboxWidth;
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
 	var CheckboxState = state || Element.State;
 	if(CheckboxState) GUI._ElementAnimation[id] = 1;
@@ -500,21 +493,16 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 	var CheckboxTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var CheckboxTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
 	var CheckboxTextX = x + CheckboxWidth + 4;
-	Render.SmoothRect(x, y + 18, CheckboxWidth, CheckboxHeight, CheckboxBorderColorAnimated);
-	Render.SmoothRect(x + 1, y + 19, CheckboxWidth - 2, CheckboxHeight - 2, CheckboxColorAnimated);
-	Render.StringCustom(CheckboxTextX, y + 14, 0, name, CheckboxTextColor, GUI.Fonts.Menu);
+	Render.SmoothRect(x, y + GUI.Scale(18), CheckboxWidth, CheckboxHeight, CheckboxBorderColorAnimated);
+	Render.SmoothRect(x + 1, y + GUI.Scale(18) + 1, CheckboxWidth - 2, CheckboxHeight - 2, CheckboxColorAnimated);
+	Render.StringCustom(CheckboxTextX, y + GUI.Scale(12) + 2.6, 0, name, CheckboxTextColor, GUI.Fonts.Menu);
 
-	if (UI.IsCursorInBox(x, y + 17, CheckboxWidth + 4 + CheckboxTextSize[0], CheckboxHeight + 2) && GUI._SliderChanging == false && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0&& !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0){
+	if (UI.IsCursorInBox(x, y + GUI.Scale(17), CheckboxWidth + 4 + CheckboxTextSize[0], CheckboxHeight + 2) && GUI._SliderChanging == false && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0&& !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0){
 		GUI._ElementAnimation[id] += 0.06;
 		if(Input.IsKeyPressed(1) && !GUI.IsAnimating()){
 			if(!GUI._ClickBlock){
 				GUI._ClickBlock = true;
-				try{
-					Element.SetValue(!CheckboxState);
-				}
-				catch(err){
-					Cheat.Print(err + "\n");
-				}
+				Element.SetValue(!CheckboxState);
 			}
 		}
 		else{
@@ -526,7 +514,7 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 	}
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 	if(GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id].Color !== undefined && CheckboxState){
-		GUI.DrawColor(Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Width - 4), y, name, id, true);
+		GUI.DrawColor(Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4), y, name, id, true);
 	}
 }
 GUI.DrawSlider = function(x, y, name, id){
@@ -536,10 +524,10 @@ GUI.DrawSlider = function(x, y, name, id){
 	var SliderBorderColor = GUI.Colors.FadeColor(GUI.Colors.CheckboxBorder, GUI.Colors.ActiveElement, GUI._ElementAnimation[id]);
 	var SliderBorderColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, SliderBorderColor, Animation, GUI._MenuAnimation[1] * 255);
 	var SliderProgressColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.ActiveElement, Animation, GUI._MenuAnimation[1] * 255);
-	var SliderHeight = 10;
+	var SliderHeight = GUI.Scale(10);
 	var SliderWidth = GUI.ContainerWidth;
 	var SliderX = x + 18;
-	var SliderY = y + 32;
+	var SliderY = y + GUI.Scale(32);
 	Render.SmoothRect(SliderX, SliderY, SliderWidth, SliderHeight, SliderBorderColorAnimated);
 	Render.SmoothRect(SliderX + 1, SliderY + 1, SliderWidth - 2, SliderHeight - 2, SliderColorAnimated);
 	var Slider = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
@@ -548,8 +536,7 @@ GUI.DrawSlider = function(x, y, name, id){
 	var Percent = (SliderWidth - ValueStart) / Math.abs(Slider.Min - Slider.Max);
 	var Progress = Value * Percent - (Slider.Min * Percent);
 	Progress = (Value == Slider.Max) ? SliderWidth : Clamp(Progress, 2, SliderWidth);
-	var SliderRadius = 3;
-	if ((UI.IsCursorInBox(SliderX, y + 30, SliderWidth, SliderHeight + 2) && GUI._SliderChanging == false && GUI._HotkeyMenuOpened == false && GUI._DropdownAnimation[0] === 0 && GUI._HotkeyMenuAnimation[0] === 0 && !GUI._ColorPickerOpened) || GUI._SliderChanging == id){
+	if ((UI.IsCursorInBox(SliderX, SliderY, SliderWidth, SliderHeight + 2) && GUI._SliderChanging == false && GUI._HotkeyMenuOpened == false && GUI._DropdownAnimation[0] === 0 && GUI._HotkeyMenuAnimation[0] === 0 && !GUI._ColorPickerOpened) || GUI._SliderChanging == id){
 		if(Input.IsKeyPressed(1)){
 			GUI._SliderChanging = id;
 			Value = Clamp(Math.round(((CursorPos[0] - SliderX) / Percent) + Slider.Min), Slider.Min, Slider.Max);
@@ -563,20 +550,20 @@ GUI.DrawSlider = function(x, y, name, id){
 		}
 	}
 
-	Render.StringCustom(SliderX, y + 10, 0, name, SliderTextColor, GUI.Fonts.Menu);
-	if(Progress < 4){
-		Render.Rect(SliderX + 1, SliderY, 2, SliderHeight, SliderProgressColor);
-	}
+	Render.StringCustom(SliderX, y + GUI.Scale(10), 0, name, SliderTextColor, GUI.Fonts.Menu);
+	if(Progress < 4) Render.Rect(SliderX + 1, SliderY, 2, SliderHeight, SliderProgressColor);
 
 	Progress = Clamp(Easing(0, Progress, Animation), 2, SliderWidth);
 	Render.SmoothRect(SliderX, SliderY, Progress, SliderHeight, SliderProgressColor);
 
 	var ValueTextSize = Render.TextSizeCustom(Value + "", GUI.Fonts.Menu);
 	var ValueTextX = Clamp(SliderX + Progress - (ValueTextSize[0] / 2) + 2, SliderX + 3, SliderX + SliderWidth - (ValueTextSize[0] * 0.7) - 2);
-	var ValueTextShadowColor = GUI.Colors.Animate(GUI.Colors.Background, [0, 0, 0, 100], Animation, /*Animation **/255);
+	var ValueTextShadowColor = GUI.Colors.Animate(GUI.Colors.Background, [0, 0, 0, 100], Animation, 255);
 
-	Render.StringCustom(ValueTextX + 1, SliderY - 1, 0, Value + "", ValueTextShadowColor, GUI.Fonts.SliderValue);
-	Render.StringCustom(ValueTextX, SliderY - 2, 0, Value + "", SliderTextColor, GUI.Fonts.SliderValue);
+	var SliderValueMargin = 1 + (2 * +(GUI._Scale > 1));
+
+	Render.StringCustom(ValueTextX + 1, SliderY - SliderValueMargin, 0, Value + "", ValueTextShadowColor, GUI.Fonts.SliderValue);
+	Render.StringCustom(ValueTextX, SliderY - SliderValueMargin - 1, 0, Value + "", SliderTextColor, GUI.Fonts.SliderValue);
 	//Render.FilledRect(SliderX - 8, SliderY, 8, SliderHeight, GUI.Colors.Background);
 }
 GUI.DrawHotkey = function(x, y, name, id){
@@ -586,10 +573,10 @@ GUI.DrawHotkey = function(x, y, name, id){
 	var HotkeyBorderColor = GUI.Colors.FadeColor(GUI.Colors.CheckboxBorder, GUI.Colors.ActiveElement, GUI._ElementAnimation[id]);
 	var HotkeyBorderColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, HotkeyBorderColor, Animation, GUI._MenuAnimation[1] * 255);
 	var Hotkey = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
-	var HotkeyTextX = x + 18;
-	var HotkeyHeight = 16;
-	var HotkeyMinX = GUI.ContainerWidth;
-	var HotkeyTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
+	var HotkeyTextX = x + GUI.Scale(18);
+	var HotkeyHeight = GUI.Scale(16);
+	//var HotkeyMinX = GUI.ContainerWidth;
+	//var HotkeyTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
 	Render.StringCustom(HotkeyTextX, y + 14, 0, name, HotkeyTextColor, GUI.Fonts.Menu);
 
 	var KeyName = Hotkey.KeyName || "none";
@@ -600,9 +587,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	if(GUI._HotkeyIsChanging === id){
 		KeyName = "...";
 		var PressedKeys = GUI.GetAllPressedKeys();
-		if(!Input.IsKeyPressed(1)){
-			GUI._ClickBlock = false;
-		}
+		if(!Input.IsKeyPressed(1)) GUI._ClickBlock = false;
 		if(PressedKeys.length && !GUI._ClickBlock){
 			var mode = (Hotkey.Mode === "none") ? Hotkey.DefaultMode : Hotkey.Mode;
 			var pressedkey = PressedKeys[0][0];
@@ -613,24 +598,20 @@ GUI.DrawHotkey = function(x, y, name, id){
 			GUI._ClickBlock = false;
 		}
 	}
-	if (Element.Key == 0){
-		KeyName = "none";
-	}
+	if (Element.Key == 0) KeyName = "none";
 	var HotkeyKeyNameTextSize = Render.TextSizeCustom(KeyName, GUI.Fonts.HotkeyKeyName);
-	var HotkeyWidth = Clamp(HotkeyKeyNameTextSize[0] + 4, 16, 100);
-	var HotkeyX = Clamp(HotkeyTextX + HotkeyTextSize[0] + 6, HotkeyTextX + HotkeyMinX - HotkeyWidth, GUI.X + GUI.Width - HotkeyWidth - 4);
+	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] + 4, 16, 100));
+	var HotkeyX = HotkeyTextX + GUI.ContainerWidth - HotkeyWidth;
 
-	var HotkeyMenuWidth = 40;
-	var HotkeyMenuElementsHeight = 14;
-	var HotkeyMenuElementsMargin = 4;
+	var HotkeyMenuWidth = GUI.Scale(40);
+	var HotkeyMenuElementsHeight = GUI.Scale(14);
+	var HotkeyMenuElementsMargin = GUI.Scale(4);
 	var HotkeyMenuElements = ["none", "hold", "toggle", "always"];
 	var HotkeyMenuHeight = (HotkeyMenuElements.length * HotkeyMenuElementsHeight) + ((HotkeyMenuElements.length - 1) * HotkeyMenuElementsMargin) + 4;
 
-	if (GUI._HotkeyMenuOpened === id || GUI._HotkeyIsChanging === id){
-		GUI._ElementAnimation[id] += 0.06;
-	}
+	if (GUI._HotkeyMenuOpened === id || GUI._HotkeyIsChanging === id) GUI._ElementAnimation[id] += 0.06;
 
-	if(UI.IsCursorInBox(HotkeyX, y + 16, HotkeyWidth, HotkeyHeight)){
+	if (UI.IsCursorInBox(HotkeyX, y + GUI.Scale(16), HotkeyWidth, HotkeyHeight)){
 		GUI._ElementAnimation[id] += 0.06;
 		if (!GUI._HotkeyIsChanging && GUI._HotkeyMenuOpened === false && GUI._SliderChanging === false && GUI._HotkeyMenuAnimation[0] === 0 && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0){
 			if(Input.IsKeyPressed(1) && Hotkey.Mode !== "always"){
@@ -665,25 +646,21 @@ GUI.DrawHotkey = function(x, y, name, id){
 	Render.StringCustom(HotkeyX + (HotkeyWidth / 2) - (HotkeyKeyNameTextSize[0] / 2), y + 16, 0, KeyName, HotkeyTextColor, GUI.Fonts.HotkeyKeyName);
 }
 GUI.DrawHotkeyMenu = function(){
-	var HotkeyMenuWidth = 40;
-	var HotkeyMenuElementsHeight = 14;
-	var HotkeyMenuElementsMargin = 4;
+	var HotkeyMenuWidth = GUI.Scale(40);
+	var HotkeyMenuElementsHeight = GUI.Scale(14);
+	var HotkeyMenuElementsMargin = GUI.Scale(4);
 	var HotkeyMenuElements = ["none", "hold", "toggle", "always"];
 	var HotkeyMenuHeight = (HotkeyMenuElements.length * HotkeyMenuElementsHeight) + ((HotkeyMenuElements.length - 1) * HotkeyMenuElementsMargin) + 4;
 
 	if(GUI._HotkeyMenuOpened !== false){
 		GUI._HotkeyMenuAnimation[0] += 0.06;
 
-		if(GUI._HotkeyMenuAnimation[0] >= 0.8){
-			GUI._HotkeyMenuAnimation[1] += 0.06;
-		}
+		if(GUI._HotkeyMenuAnimation[0] >= 0.8) GUI._HotkeyMenuAnimation[1] += 0.06;
 	}
 	else{
 		GUI._HotkeyMenuAnimation[1] -= 0.06;
 
-		if(GUI._HotkeyMenuAnimation[1] <= 0.2){
-			GUI._HotkeyMenuAnimation[0] -= 0.06;
-		}
+		if(GUI._HotkeyMenuAnimation[1] <= 0.2) GUI._HotkeyMenuAnimation[0] -= 0.06;
 	}
 
 	GUI._HotkeyMenuAnimation[0] = Clamp(GUI._HotkeyMenuAnimation[0], 0, 1);
@@ -709,9 +686,7 @@ GUI.DrawHotkeyMenu = function(){
 		var MenuElementY = GUI._HotkeyMenuPos[1] + ((HotkeyMenuElementsHeight + ((IsNotLast) ? HotkeyMenuElementsMargin : 0)) * Index);
 		var MenuElementHeight = HotkeyMenuElementsHeight + ((IsNotLast) ? HotkeyMenuElementsMargin : 0);
 		Render.StringCustom(MenuElementX, MenuElementY, 0, MenuElement, HotkeyMenuTextColorAnimated, GUI.Fonts.HotkeyKeyName);
-		if(IsActive){
-			GUI._HotkeyMenuAnimation[2][Index] += 0.06;
-		}
+		if(IsActive) GUI._HotkeyMenuAnimation[2][Index] += 0.06;
 		if(UI.IsCursorInBox(MenuElementX, MenuElementY, HotkeyMenuWidth, MenuElementHeight)){
 				if(Input.IsKeyPressed(1) && GUI._HotkeyMenuOpened !== false){
 					Hotkey.SetValue([MenuElement, Hotkey.Key]);
@@ -731,36 +706,37 @@ GUI.DrawHotkeyMenu = function(){
 	}
 }
 GUI.DrawColor = function(x, y, name, id, isAdditional){
-	var ColorBoxWidth = 14;
-	var ColorBoxHeight = 14;
+	var ColorBoxWidth = GUI.Scale(14);
+	var ColorBoxHeight = ColorBoxWidth;
 	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
 	var ColorBoxColor = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id].Color;
 	var ColorBoxColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, ColorBoxColor, Animation, Clamp(ColorBoxColor[3] - (255 - GUI._MenuAnimation[1] * 255), 0, 255));
 	var ColorBoxTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var ColorBoxTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
-	var ColorBoxTextX = x + 18;
+	var ColorBoxTextX = x + GUI.Scale(18);
+	var ColorBoxY = y + GUI.Scale(18);
 	if(!isAdditional){
 		Render.StringCustom(ColorBoxTextX, y + 14, 0, name, ColorBoxTextColor, GUI.Fonts.Menu);
-		var ColorBoxX = Clamp(ColorBoxTextX + ColorBoxTextSize[0] + 8, ColorBoxTextX + GUI.ContainerWidth - ColorBoxWidth, ColorBoxTextX + GUI.Width);
+		var ColorBoxX = Clamp(ColorBoxTextX + ColorBoxTextSize[0] + 8, ColorBoxTextX + GUI.ContainerWidth - ColorBoxWidth, ColorBoxTextX + GUI.Scale(GUI.Width));
 	}
 	else{
 		var ColorBoxX = x;
 	}
 
 	if(ColorBoxColor[3] !== 255){
-		Render.FilledRect(ColorBoxX, y + 18, ColorBoxWidth / 2, ColorBoxHeight / 2, [255, 255, 255, Animation * 255]);
-		Render.FilledRect(ColorBoxX + ColorBoxWidth / 2, y + 18, ColorBoxWidth / 2, ColorBoxHeight / 2, [155, 155, 155, Animation * 255]);
-		Render.FilledRect(ColorBoxX, y + 18 + ColorBoxHeight / 2, ColorBoxWidth / 2, ColorBoxHeight / 2, [155, 155, 155, Animation * 255]);
-		Render.FilledRect(ColorBoxX + ColorBoxWidth / 2, y + 18 + ColorBoxHeight / 2, ColorBoxWidth / 2, ColorBoxHeight / 2, [255, 255, 255, Animation * 255]);
+		Render.FilledRect(ColorBoxX, ColorBoxY, ColorBoxWidth / 2, ColorBoxHeight / 2, [255, 255, 255, Animation * 255]);
+		Render.FilledRect(ColorBoxX + ColorBoxWidth / 2, ColorBoxY, ColorBoxWidth / 2, ColorBoxHeight / 2, [155, 155, 155, Animation * 255]);
+		Render.FilledRect(ColorBoxX, ColorBoxY + ColorBoxHeight / 2, ColorBoxWidth / 2, ColorBoxHeight / 2, [155, 155, 155, Animation * 255]);
+		Render.FilledRect(ColorBoxX + ColorBoxWidth / 2, ColorBoxY + ColorBoxHeight / 2, ColorBoxWidth / 2, ColorBoxHeight / 2, [255, 255, 255, Animation * 255]);
 	}
 	
 
-	Render.FilledRect(ColorBoxX, y + 18, ColorBoxWidth, ColorBoxHeight, ColorBoxColorAnimated);
+	Render.FilledRect(ColorBoxX, ColorBoxY, ColorBoxWidth, ColorBoxHeight, ColorBoxColorAnimated);
 
 	var ColorPickerMargin = 5;
 	var ColorPickerWidth = (ColorPickerMargin * 2) + 255;
 	var ColorPickerHeight = (ColorPickerMargin * 9) + 255 + 30 + 30;
-	var Activate = (GUI._ColorPickerPos[0] >= ColorBoxX && GUI._ColorPickerPos[0] <= ColorBoxX + ColorBoxWidth && GUI._ColorPickerPos[1] >= y + 18 && GUI._ColorPickerPos[1] <= y + 18 + ColorBoxHeight);
+	var Activate = (GUI._ColorPickerPos[0] >= ColorBoxX && GUI._ColorPickerPos[0] <= ColorBoxX + ColorBoxWidth && GUI._ColorPickerPos[1] >= ColorBoxY && GUI._ColorPickerPos[1] <= ColorBoxY + ColorBoxHeight);
 
 	var ColorMenuWidth = 40;
 	var ColorMenuElementsHeight = 14;
@@ -768,7 +744,7 @@ GUI.DrawColor = function(x, y, name, id, isAdditional){
 	var ColorMenuElements = ["copy", "paste"];
 	var ColorMenuHeight = (ColorMenuElements.length * ColorMenuElementsHeight) + ((ColorMenuElements.length - 1) * ColorMenuElementsMargin) + 4;
 
-	if(UI.IsCursorInBox(ColorBoxX, y + 18, ColorBoxWidth, ColorBoxHeight)){
+	if (UI.IsCursorInBox(ColorBoxX, ColorBoxY, ColorBoxWidth, ColorBoxHeight)){
 		if (!GUI._HotkeyIsChanging && GUI._HotkeyMenuOpened === false && GUI._ColorMenuOpened === false && GUI._SliderChanging === false && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorPickerAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0 && GUI._DropdownAnimation[0] === 0){
 			if(Input.IsKeyPressed(1)){
 				if(!GUI._ClickBlock){
@@ -954,7 +930,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 	var ElementsWidths = [100];
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
 	var DropdownElements = Element.Elements;
-	var DropdownHeight = 26;
+	var DropdownHeight = GUI.Scale(26);
 	for (DropdownElement in DropdownElements){
 		var Text = DropdownElements[DropdownElement];
 		ElementsWidths.push(Render.TextSizeCustom(Text, GUI.Fonts.Menu)[0]);
@@ -966,8 +942,8 @@ GUI.DrawDropdown = function (x, y, name, id){
 	var DropdownBorderColor = GUI.Colors.FadeColor(GUI.Colors.CheckboxBorder, GUI.Colors.ActiveElement, GUI._ElementAnimation[id]);
 	var DropdownBorderColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, DropdownBorderColor, Animation, GUI._MenuAnimation[1] * 255);
 	var DropdownTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
-	var DropdownY = y + 32;
-	Render.StringCustom(x, y + 12, 0, name, DropdownTextColor, GUI.Fonts.Menu);
+	var DropdownY = y + GUI.Scale(32);
+	Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
 	Render.SmoothRect(x, DropdownY, DropdownWidth, DropdownHeight, DropdownBorderColorAnimated);
 	Render.SmoothRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, DropdownColorAnimated);
 	Render.StringCustom(x + 5, DropdownY + 2, 0, DropdownElements[Element.Value], DropdownTextColor, GUI.Fonts.Menu);
@@ -989,7 +965,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 	}
 	else{
 		GUI._ElementAnimation[id] -= 0.06;
-		if (!UI.IsCursorInBox(GUI._DropdownPos[0], GUI._DropdownPos[1], DropdownWidth, DropdownHeight * DropdownElements.length) && GUI._DropdownOpened){
+		if (!UI.IsCursorInBox(GUI._DropdownPos[0], GUI._DropdownPos[1], DropdownWidth, Math.ceil(DropdownHeight * DropdownElements.length)) && GUI._DropdownOpened && !GUI._DropdownSelectingElement){
 			if (Input.IsKeyPressed(1)) {
 				GUI._DropdownOpened = false;
 				GUI._ClickBlock = false;
@@ -1018,7 +994,7 @@ GUI.DrawDropdownSelector = function(){
 
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._DropdownActive];
 	var DropdownElements = Element.Elements;
-	var ElementHeight = 26;
+	var ElementHeight = GUI.Scale(26);
 	var ElementWidth = GUI._DropdownWidth;
 	var DropdownHeight = ElementHeight * DropdownElements.length;
 	var DropdownAnimation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._DropdownAnimation[0];
@@ -1031,19 +1007,22 @@ GUI.DrawDropdownSelector = function(){
 	Render.SmoothRect(GUI._DropdownPos[0] + 1, GUI._DropdownPos[1] + 1, ElementWidth - 2, DropdownHeightAnimated - 2, DropdownColorAnimated);
 	Render.Line(GUI._DropdownPos[0], GUI._DropdownPos[1] + 2, GUI._DropdownPos[0], GUI._DropdownPos[1] + DropdownHeightAnimated - 2, DropdownBorderColor);
 
+	GUI._DropdownSelectingElement = false;
+	
 	for(Index in DropdownElements){
 		var ElementY = GUI._DropdownPos[1] + (ElementHeight * Index);
 		var IsActive = Element.Value == Index;
 		if (IsActive) GUI._DropdownAnimation[2][Index] += 0.08;
 		var DropdownTextColor = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, GUI.Colors.HotkeyMenuTextActive, GUI._DropdownAnimation[2][Index]), Lerp(0, 255, DropdownTextAnimation));
 
-		Render.StringCustom(GUI._DropdownPos[0] + 5, ElementY + 2, 0, DropdownElements[Index], DropdownTextColor, GUI.Fonts.Menu);
-		if (UI.IsCursorInBox(GUI._DropdownPos[0] + 1, ElementY, ElementWidth, ElementHeight) && GUI._DropdownAnimation[0] === 1){
+		Render.StringCustom(GUI._DropdownPos[0] + GUI.Scale(5), ElementY + GUI.Scale(2), 0, DropdownElements[Index], DropdownTextColor, GUI.Fonts.Menu);
+		if (UI.IsCursorInBox(GUI._DropdownPos[0] + 1, ElementY, ElementWidth, ElementHeight) && GUI._DropdownAnimation[0] === 1 && GUI._DropdownOpened){
+			GUI._DropdownSelectingElement = true;
 			GUI._DropdownAnimation[2][Index] += 0.066;
 			if (Input.IsKeyPressed(1) && !GUI._ClickBlock){
-				
 				Element.SetValue(Index);
 				GUI._DropdownOpened = false;
+				GUI._DropdownSelectingElement = false;
 			}
 		}
 		else{
@@ -1061,7 +1040,7 @@ GUI.ProcessDrag = function(){
 		return;
 	}
 
-	if ((UI.IsCursorInBox(GUI.X + (6 + HeaderLogoSize[0]) * +(GUI.ActiveTab !== ""), GUI.Y, GUI.Width - 6 - (HeaderLogoSize[0] * +(GUI.ActiveTab !== "")), 30) && GUI._SliderChanging == false && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && GUI._DropdownAnimation[0] == 0) || GUI._MenuIsMoving){
+	if ((UI.IsCursorInBox(GUI.X + (6 + HeaderLogoSize[0]) * +(GUI.ActiveTab !== ""), GUI.Y, GUI.Scale(GUI.Width) - 6 - (HeaderLogoSize[0] * +(GUI.ActiveTab !== "")), 30) && GUI._SliderChanging == false && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && GUI._DropdownAnimation[0] == 0) || GUI._MenuIsMoving){
 		GUI._MenuIsMoving = true;
 		GUI.X = CursorPos[0] - GUI._OldCursor[0] + GUI.X;
 		GUI.Y = CursorPos[1] - GUI._OldCursor[1] + GUI.Y;
@@ -1070,7 +1049,7 @@ GUI.ProcessDrag = function(){
 		GUI._OldCursor = CursorPos;
 	}
 
-	GUI.X = Clamp(GUI.X, -GUI.Width + 5, ScreenSize[0] - 5);
+	GUI.X = Clamp(GUI.X, -GUI.Scale(GUI.Width) + 5, ScreenSize[0] - 5);
 	GUI.Y = Clamp(GUI.Y, -28, ScreenSize[1] - 5);
 }
 GUI.ProcessAnimations = function(){
@@ -1564,18 +1543,18 @@ function Clamp(value, min, max){
 
 //Fonts
 GUI.InitFonts = function(){
-	GUI.Fonts.Logo = Render.AddFont("Segoe UI", 24, 700);
-	GUI.Fonts.TabText = Render.AddFont("Segoe UI Light", 15, 100);
-	GUI.Fonts.TabIcon = Render.AddFont("OnetapFont", 26, 100);
-	GUI.Fonts.HeaderLogo = Render.AddFont("Segoe UI", 14, 700);
-	GUI.Fonts.HeaderTabText = Render.AddFont("Segoe UI Semibold", 11, 500);
-	GUI.Fonts.HeaderTabIcon = Render.AddFont("OnetapFont", 11, 100);
-	GUI.Fonts.Username = Render.AddFont("Segoe UI", 11, 700);
+	GUI.Fonts.Logo = Render.AddFont("Segoe UI", GUI.Scale(24), 700);
+	GUI.Fonts.TabText = Render.AddFont("Segoe UI Light", GUI.Scale(15), 100);
+	GUI.Fonts.TabIcon = Render.AddFont("OnetapFont", GUI.Scale(26), 100);
+	GUI.Fonts.HeaderLogo = Render.AddFont("Segoe UI", GUI.Scale(14), 700);
+	GUI.Fonts.HeaderTabText = Render.AddFont("Segoe UI Semibold", GUI.Scale(11), 500);
+	GUI.Fonts.HeaderTabIcon = Render.AddFont("OnetapFont", GUI.Scale(11), 100);
+	GUI.Fonts.Username = Render.AddFont("Segoe UI", GUI.Scale(11), 700);
 	//GUI.Fonts.AvatarLetter = Render.AddFont("Segoe UI", 18, 700);
-	GUI.Fonts.SubtabText = Render.AddFont("Segoe UI Semilight", 11, 200);
-	GUI.Fonts.Menu = Render.AddFont("Segoe UI Semilight", 11, 200);
-	GUI.Fonts.SliderValue = Render.AddFont("Segoe UI Light", 8, 100);
-	GUI.Fonts.HotkeyKeyName = Render.AddFont("Segoe UI Light", 9, 100);
+	GUI.Fonts.SubtabText = Render.AddFont("Segoe UI Semilight", GUI.Scale(11), 200);
+	GUI.Fonts.Menu = Render.AddFont("Segoe UI Semilight", Math.ceil(11 * GUI._Scale), 200);
+	GUI.Fonts.SliderValue = Render.AddFont("Segoe UI Light", GUI.Scale(8), 100);
+	GUI.Fonts.HotkeyKeyName = Render.AddFont("Segoe UI Light", GUI.Scale(9), 100);
 }
 
 //Colors
@@ -1855,6 +1834,7 @@ GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hit logs", 35).additional("color");
+GUI.AddDropdown("GUI Scale", ['75%', '100%', '125%', '150%']).SetValue(1);
 GUI.AddColor("Menu accent");
 
 GUI.AddTab("Misc", "D");
@@ -3941,6 +3921,13 @@ function noDesync(){
 }
 
 Cheat.RegisterCallback("CreateMove", "noDesync");
+
+function guiScale(){
+	var scale = GUI.GetValue("Visuals", "GUI", "GUI Scale");
+	GUI._Scale = 0.85 + (scale * 0.15);
+}
+
+Cheat.RegisterCallback("Draw", "guiScale");
 
 //Callbacks
 var Draw = GUI.Draw;
