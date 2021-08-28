@@ -5,6 +5,18 @@ getMethods = function(obj){return Object.getOwnPropertyNames(obj).filter(functio
 function ptr(obj){
 	return Duktape.Pointer(obj).toString();
 }
+(function CreateErrorHandler(fnCallback) {
+	Duktape.errCreate = function (e) {
+		if (!(e instanceof Error) || 'thrown' in e || !Object.isExtensible(e)) return e;
+		e = fnCallback(e);
+		return e;
+	}
+})(function (e) {
+	e.time = new Date();
+	Cheat.Print("Finded error in the script code, please send next message to the developer: \n");
+	Cheat.PrintColor([255, 74, 74, 255], "Information for the developer: error at line " + e.lineNumber + "\n");
+	return e;
+});
 var ScreenSize = Render.GetScreenSize();
 const si = "Script items";
 var GUI = Duktape.compact({
@@ -1219,15 +1231,18 @@ GUI.AddTab = function(name, icon){
 	GUI._TabIcons[name] = icon;
 	GUI._TabAnimations[name] = [0, 0];
 }
-GUI.AddSubtab = function(tab, name){
-	GUI._MenuElements[tab][name] = [];
+GUI.AddSubtab = function(name){
+	var tabs = Object.keys(GUI._MenuElements);
+	GUI._MenuElements[tabs[tabs.length - 1]][name] = [];
 	GUI._SubtabAnimations[name] = [0];
 }
-GUI.Element = function(tab, subtab, name, type){
-	this.Id = name + tab[0] + subtab[0];
+GUI.Element = function(name, type){
+	var tabs = Object.keys(GUI._MenuElements);
 	this.Name = name;
-	this.Tab = tab;
-	this.Subtab = subtab;
+	this.Tab = tabs[tabs.length - 1];
+	var subtabs = Object.keys(GUI._MenuElements[this.Tab]);
+	this.Subtab = subtabs[subtabs.length - 1];
+	this.Id = this.Name + this.Tab[0] + this.Subtab[0];
 	this.Type = type;
 	this.Flags = 0;
 	GUI._ElementAnimation[this.Id] = 0;
@@ -1263,39 +1278,39 @@ GUI.Element.prototype.flags = function(flags){
 	this.Flags = flags;
 	return this;
 }
-GUI.AddCheckbox = function(tab, subtab, name, index){
-	var E = new GUI.Element(tab, subtab, name, "checkbox");
+GUI.AddCheckbox = function(name, index){
+	var E = new GUI.Element(name, "checkbox");
 	E.Index = index;
 	E.State = false;
-	return (GUI._MenuElements[tab][subtab][E.Id] = E);
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
-GUI.AddSlider = function(tab, subtab, name, min, max, value){
-	var E = new GUI.Element(tab, subtab, name, "slider");
+GUI.AddSlider = function(name, min, max, value){
+	var E = new GUI.Element(name, "slider");
 	E.Value = value || min;
 	E.Min = min;
 	E.Max = max;
-	return (GUI._MenuElements[tab][subtab][E.Id] = E);
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
-GUI.AddHotkey = function(tab, subtab, name, defaultMode){
-	var E = new GUI.Element(tab, subtab, name, "hotkey");
+GUI.AddHotkey = function(name, defaultMode){
+	var E = new GUI.Element(name, "hotkey");
 	E.State = null;
 	E.DefaultMode = defaultMode;
 	E.Mode = defaultMode || "hold";
 	E.Key = 0;
 	E.KeyName = "none";
-	return (GUI._MenuElements[tab][subtab][E.Id] = E);
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
-GUI.AddColor = function(tab, subtab, name){
-	var E = new GUI.Element(tab, subtab, name, "color");
+GUI.AddColor = function(name){
+	var E = new GUI.Element(name, "color");
 	E.Color = [255, 255, 255, 255];
 	E.ColorHSV = [0, 0, 1, 255];
-	return (GUI._MenuElements[tab][subtab][E.Id] = E);
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
-GUI.AddDropdown = function (tab, subtab, name, elements) {
-	var E = new GUI.Element(tab, subtab, name, "dropdown");
+GUI.AddDropdown = function (name, elements) {
+	var E = new GUI.Element(name, "dropdown");
 	E.Elements = elements;
 	E.Value = 0;
-	return (GUI._MenuElements[tab][subtab][E.Id] = E);
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
 GUI.GetMasterState = function(tab, subtab, name){
 	var Id = name + tab[0] + subtab[0];
@@ -1694,155 +1709,178 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 61
+//Last index is 62
 GUI.Init("OTC SYNC");
+
 GUI.AddTab("Rage", "A");
-GUI.AddSubtab("Rage", "General");
-GUI.AddCheckbox("Rage", "General", "Auto peek helper", 0);
-GUI.AddCheckbox("Rage", "General", "Auto enable DT", 52).master("Auto peek helper").flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Rage", "General", "Jumpscout", 1);
-GUI.AddCheckbox("Rage", "General", "Adaptive noscope", 43);
-GUI.AddCheckbox("Rage", "General", "Faster autoscope", 44);
-GUI.AddCheckbox("Rage", "General", "AWP switch after shot", 51);
-GUI.AddCheckbox("Rage", "General", "Leg prediction", 56);
-GUI.AddSubtab("Rage", "Min-DMG");
-GUI.AddCheckbox("Rage", "Min-DMG", "Two shot on Auto", 4);
-GUI.AddCheckbox("Rage", "Min-DMG", "Force HP + value if Min-Damage < HP", 2);
-GUI.AddSlider("Rage", "Min-DMG", "HP + value", 0, 30, 5).master("Force HP + value if Min-Damage < HP");
-GUI.AddSubtab("Rage", "Min-DMG Override");
-var dmg_el_name = GUI.AddHotkey("Rage", "Min-DMG Override", "Min-damage override", "hold").Name;
-GUI.AddHotkey("Rage", "Min-DMG Override", "Min-damage override 2", "hold").master(dmg_el_name);
-GUI.AddDropdown("Rage", "Min-DMG Override", "Min-DMG weapon groups", ["General", "Pistol", "Heavy Pistol", "Scout", "AWP", "Auto"]).master(dmg_el_name).flags(GUI.NOT_SAVEABLE);
-GUI.AddSlider("Rage", "Min-DMG Override", "General Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Heavy Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Scout Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "AWP Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Auto Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "General Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Heavy Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Scout Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "AWP Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "Auto Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Rage", "Min-DMG Override", "General Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Rage", "Min-DMG Override", "Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Rage", "Min-DMG Override", "Heavy Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Rage", "Min-DMG Override", "Scout Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Rage", "Min-DMG Override", "AWP Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Rage", "Min-DMG Override", "Auto Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSubtab("Rage", "Safe points");
-GUI.AddCheckbox("Rage", "Safe points", "Safe points on limbs", 5);
-GUI.AddCheckbox("Rage", "Safe points", "Safe points if slowwalking", 6);
-GUI.AddCheckbox("Rage", "Safe points", "Safe points if lethal", 7);
-GUI.AddCheckbox("Rage", "Safe points", "Safe points on AWP", 48);
-GUI.AddSubtab("Rage", "Doubletap");
+
+GUI.AddSubtab("General");
+GUI.AddCheckbox("Auto peek helper", 0);
+GUI.AddCheckbox("Auto enable DT", 52).master("Auto peek helper").flags(GUI.SAME_LINE);
+GUI.AddCheckbox("Jumpscout", 1);
+GUI.AddCheckbox("Adaptive noscope", 43);
+GUI.AddCheckbox("Faster autoscope", 44);
+GUI.AddCheckbox("AWP switch after shot", 51);
+GUI.AddCheckbox("Leg prediction", 56);
+
+GUI.AddSubtab("Min-DMG");
+GUI.AddCheckbox("Two shot on Auto", 4);
+GUI.AddCheckbox("Force HP + value if Min-Damage < HP", 2);
+GUI.AddSlider("HP + value", 0, 30, 5).master("Force HP + value if Min-Damage < HP");
+
+GUI.AddSubtab("Min-DMG Override");
+var dmg_el_name = GUI.AddHotkey("Min-damage override", "hold").Name;
+GUI.AddHotkey("Min-damage override 2", "hold").master(dmg_el_name);
+GUI.AddDropdown("Min-DMG weapon groups", ["General", "Pistol", "Heavy Pistol", "Scout", "AWP", "Auto"]).master(dmg_el_name).flags(GUI.NOT_SAVEABLE);
+GUI.AddSlider("General Original Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Heavy Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Scout Original Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("AWP Original Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Auto Original Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("General Override Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Heavy Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Scout Override Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("AWP Override Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("Auto Override Min-DMG", 1, 130, 1).master(dmg_el_name);
+GUI.AddSlider("General Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+GUI.AddSlider("Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+GUI.AddSlider("Heavy Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+GUI.AddSlider("Scout Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+GUI.AddSlider("AWP Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+GUI.AddSlider("Auto Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+
+GUI.AddSubtab("Safe points");
+GUI.AddCheckbox("Safe points on limbs", 5);
+GUI.AddCheckbox("Safe points if slowwalking", 6);
+GUI.AddCheckbox("Safe points if lethal", 7);
+GUI.AddCheckbox("Safe points on AWP", 48);
+
+GUI.AddSubtab("Doubletap");
 //хуй вам а не беттер дт))0)00)
 //GUI.AddCheckbox("Rage", "Doubletap", "Better DT (addon only)", 51);
-GUI.AddCheckbox("Rage", "Doubletap", "Recharge speed", 9);
-GUI.AddSlider("Rage", "Doubletap", "Recharge ticks", 0, 16, 10).master("Recharge speed");
-GUI.AddCheckbox("Rage", "Doubletap", "Lag peek (pizdec)", 54);
-GUI.AddSlider("Rage", "Doubletap", "Extrapolate ticks", 0, 16, 3).master("Lag peek (pizdec)");
-GUI.AddSubtab("Rage", "Other");
-GUI.AddHotkey("Rage", "Other", "Extended backtracking", "hold");
-GUI.AddHotkey("Rage", "Other", "Force head", "hold");
-GUI.AddHotkey("Rage", "Other", "Force backshoot", "hold");
-GUI.AddCheckbox("Rage", "Other", "Custom zeus hitchance", 10);
-GUI.AddSlider("Rage", "Other", "Hitchance", 0, 100, 90).master("Custom zeus hitchance");
+GUI.AddCheckbox("Recharge speed", 9);
+GUI.AddSlider("Recharge ticks", 0, 16, 10).master("Recharge speed");
+GUI.AddCheckbox("Lag peek (pizdec)", 54);
+GUI.AddSlider("Extrapolate ticks", 0, 16, 3).master("Lag peek (pizdec)");
+GUI.AddSubtab("Other");
+GUI.AddHotkey("Extended backtracking", "hold");
+GUI.AddHotkey("Force head", "hold");
+GUI.AddHotkey("Force backshoot", "hold");
+GUI.AddCheckbox("Custom zeus hitchance", 10);
+GUI.AddSlider("Hitchance", 0, 100, 90).master("Custom zeus hitchance");
 
 GUI.AddTab("Anti-Aim", "B");
-GUI.AddSubtab("Anti-Aim", "General");
-GUI.AddHotkey("Anti-Aim", "General", "Lowdelta", "hold");
-GUI.AddHotkey("Anti-Aim", "General", "Freestanding", "toggle");
-GUI.AddCheckbox("Anti-Aim", "General", "Legit AA on E", 11);
-GUI.AddCheckbox("Anti-Aim", "General", "Legbreaker", 12);
-GUI.AddDropdown("Anti-Aim", "General", "Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
-GUI.AddCheckbox("Anti-Aim", "General", "Auto invert", 49);
-GUI.AddCheckbox("Anti-Aim", "General", "Adaptive jitter", 58);
-GUI.AddCheckbox("Anti-Aim", "General", "No desync on DT", 61);
-GUI.AddSlider("Anti-Aim", "General", "Legbreaker speed", 1, 5, 2).master("Legbreaker");
-GUI.AddSubtab("Anti-Aim", "AA Presets");
-GUI.AddDropdown("Anti-Aim", "AA Presets", "Preset", ["None", "Desync Jitter", "Desync Sway", "LavaWalk"]);
-GUI.AddSubtab("Anti-Aim", "Slowwalk");
-GUI.AddCheckbox("Anti-Aim", "Slowwalk", "Custom slowwalk", 14);
-GUI.AddSlider("Anti-Aim", "Slowwalk", "Slowwalk speed", 5, 80, 60).master("Custom slowwalk");
-GUI.AddCheckbox("Anti-Aim", "Slowwalk", "Slowwalk jitter", 15).master("Custom slowwalk");
-GUI.AddSubtab("Anti-Aim", "Fake Lag");
-GUI.AddCheckbox("Anti-Aim", "Fake Lag", "Static legs", 47);
-GUI.AddCheckbox("Anti-Aim", "Fake Lag", "Experimental mode", 59).master("Static legs").flags(GUI.SAME_LINE);
-GUI.AddSlider("Anti-Aim", "Fake Lag", "Fake lag choke", 8, 15, 14).master("Static legs");
-GUI.AddCheckbox("Anti-Aim", "Fake Lag", "No fake lag on revolver", 17);
-GUI.AddCheckbox("Anti-Aim", "Fake Lag", "No fake lag on nades", 18);
-GUI.AddSubtab("Anti-Aim", "Matchmaking FD");
-GUI.AddCheckbox("Anti-Aim", "Matchmaking FD", "Matchmaking FD", 19);
+
+GUI.AddSubtab("General");
+GUI.AddHotkey("Lowdelta", "hold");
+GUI.AddHotkey("Freestanding", "toggle");
+GUI.AddCheckbox("Legit AA on E", 11);
+GUI.AddCheckbox("Legbreaker", 12);
+GUI.AddDropdown("Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
+GUI.AddCheckbox("Auto invert", 49);
+GUI.AddCheckbox("Adaptive jitter", 58);
+GUI.AddCheckbox("No desync on DT", 61);
+GUI.AddSlider("Legbreaker speed", 1, 5, 2).master("Legbreaker");
+
+GUI.AddSubtab("AA Presets");
+GUI.AddDropdown("Preset", ["None", "Desync Jitter", "Desync Sway", "LavaWalk"]);
+
+GUI.AddSubtab("Slowwalk");
+GUI.AddCheckbox("Custom slowwalk", 14);
+GUI.AddSlider("Slowwalk speed", 5, 80, 60).master("Custom slowwalk");
+GUI.AddCheckbox("Slowwalk jitter", 15).master("Custom slowwalk");
+
+GUI.AddSubtab("Fake Lag");
+GUI.AddCheckbox("Static legs", 47);
+GUI.AddCheckbox("Experimental mode", 59).master("Static legs").flags(GUI.SAME_LINE);
+GUI.AddSlider("Fake lag choke", 8, 15, 14).master("Static legs");
+GUI.AddCheckbox("No fake lag on revolver", 17);
+GUI.AddCheckbox("No fake lag on nades", 18);
+
+GUI.AddSubtab("Matchmaking FD");
+GUI.AddCheckbox("Matchmaking FD", 19);
 
 GUI.AddTab("Visuals", "C");
-GUI.AddSubtab("Visuals", "World");
-GUI.AddCheckbox("Visuals", "World", "Custom Bloom", 20);
-GUI.AddSlider("Visuals", "World", "World brightness", -50, 0, 0);
-GUI.AddCheckbox("Visuals", "World", "Nade prediction", 27).additional("color");
-GUI.AddCheckbox("Visuals", "World", "Trail", 29).additional("color");
-GUI.AddSubtab("Visuals", "Players");
-GUI.AddCheckbox("Visuals", "Players", "Skeleton on hit", 22).additional("color");
-GUI.AddCheckbox("Visuals", "Players", "Damage markers", 23).additional("color");
-GUI.AddCheckbox("Visuals", "Players", "History chams on extended backtrack", 24);
-GUI.AddCheckbox("Visuals", "Players", "Better glow chams", 8).additional("color");
-GUI.AddCheckbox("Visuals", "Players", "Hollow", 3).master("Better glow chams");
-GUI.AddCheckbox("Visuals", "Players", "Pulse", 46).master("Better glow chams");
-GUI.AddCheckbox("Visuals", "Players", "Wireframe", 30).master("Better glow chams");
-GUI.AddSubtab("Visuals", "Local");
-GUI.AddCheckbox("Visuals", "Local", "Agent changer", 26);
-GUI.AddDropdown("Visuals", "Local", "CT Agent", ["'TwoTimes' McCoy", "Seal Team 6 Soldier", "Buckshot", "Lt. Commander Ricksaw", "B Squadron Officer", "3rd Commando Company", "Special Agent Ava", "Operator", "Markus Delrow", "Michael Syfers"]).master("Agent changer");
-GUI.AddDropdown("Visuals", "Local", "T Agent", ["Dragomir", "Rezan The Ready", "Maximus", "Blackwolf", "The Doctor' Romanov", "Enforcer", "Slingshot", "Soldier", "The Elite Mr. Muhlik", "Ground Rebel", "Osiris", "Prof. Shahmat"]).master("Agent changer");
-GUI.AddSubtab("Visuals", "Viewmodel");
-GUI.AddCheckbox("Visuals", "Viewmodel", "Arms changer", 25);
-GUI.AddDropdown("Visuals", "Viewmodel", "T Arms", ["Default", "Nigger", "Brown", "Asian", "Red", "Tatoo", "White"]).master("Arms changer");
-GUI.AddDropdown("Visuals", "Viewmodel", "CT Arms", ["Default", "Nigger", "Brown", "Asian", "Red", "Tatoo", "White"]).master("Arms changer");
-var knife_list = ["Default", "Bayonet", "Flip knife", "Gut knife", "Karambit", "M9 Bayonet", "Butterfly", "Falchion", "Navaja", "Shadow daggers", "Stiletto", "Bowie", "Huntsman", "Talon", "Ursus", "Classic", "Paracord", "Survival", "Nomad", "Skeleton"];
-GUI.AddCheckbox("Visuals", "Viewmodel", "Knife changer", 57);
-GUI.AddDropdown("Visuals", "Viewmodel", "T Knife", knife_list).master("Knife changer");
-GUI.AddDropdown("Visuals", "Viewmodel", "CT Knife", knife_list).master("Knife changer");
-GUI.AddSubtab("Visuals", "Other");
-GUI.AddCheckbox("Visuals", "Other", "Better scope", 28).additional("color");
-GUI.AddSlider("Visuals", "Other", "Better scope weight", 1, 6, 2).master("Better scope");
-GUI.AddSlider("Visuals", "Other", "Better scope length", 0, 100, 14).master("Better scope");
-GUI.AddSlider("Visuals", "Other", "Better scope offset", 0, 100, 12).master("Better scope");
-GUI.AddCheckbox("Visuals", "Other", "Party Zeus", 21);
-GUI.AddSubtab("Visuals", "Extra");
-GUI.AddCheckbox("Visuals", "Extra", "Custom thirdperson", 42);
-GUI.AddSlider("Visuals", "Extra", "Thirdperson distance", 50, 300, 0).master("Custom thirdperson");
-GUI.AddSlider("Visuals", "Extra", "Aspect ratio", 0, 300, 0);
-GUI.AddSubtab("Visuals", "GUI");
-GUI.AddCheckbox("Visuals", "GUI", "Watermark", 31).additional("color");
-GUI.AddCheckbox("Visuals", "GUI", "Indicators", 32);
-GUI.AddCheckbox("Visuals", "GUI", "Indicators centered", 45).master("Indicators").flags(GUI.SAME_LINE);
-GUI.AddDropdown("Visuals", "GUI", "Indicators type", ['default', 'new', 'new v2']).master("Indicators");
+
+GUI.AddSubtab("World");
+GUI.AddCheckbox("Custom Bloom", 20);
+GUI.AddSlider("World brightness", -50, 0, 0);
+GUI.AddCheckbox("Nade prediction", 27).additional("color");
+GUI.AddCheckbox("Trail", 29).additional("color");
+
+GUI.AddSubtab("Players");
+GUI.AddCheckbox("Skeleton on hit", 22).additional("color");
+GUI.AddCheckbox("Damage markers", 23).additional("color");
+GUI.AddCheckbox("History chams on extended backtrack", 24);
+GUI.AddCheckbox("Better glow chams", 8).additional("color");
+GUI.AddCheckbox("Hollow", 3).master("Better glow chams");
+GUI.AddCheckbox("Pulse", 46).master("Better glow chams");
+GUI.AddCheckbox("Wireframe", 30).master("Better glow chams");
+
+GUI.AddSubtab("Local");
+GUI.AddCheckbox("Agent changer", 26);
+GUI.AddDropdown("CT Agent", "'TwoTimes' McCoy|Seal Team 6 Soldier|Buckshot|Lt. Commander Ricksaw|B Squadron Officer|3rd Commando Company|Special Agent Ava|Operator|Markus Delrow|Michael Syfers".split("|")).master("Agent changer");
+GUI.AddDropdown("T Agent", "Dragomir|Rezan The Ready|Maximus|Blackwolf|The Doctor' Romanov|Enforcer|Slingshot|Soldier|The Elite Mr. Muhlik|Ground Rebel|Osiris|Prof. Shahmat".split("|")).master("Agent changer");
+
+GUI.AddSubtab("Viewmodel");
+GUI.AddCheckbox("Arms changer", 25);
+GUI.AddDropdown("T Arms", "Default|Nigger|Brown|Asian|Red|Tatoo|White".split("|")).master("Arms changer");
+GUI.AddDropdown("CT Arms", "Default|Nigger|Brown|Asian|Red|Tatoo|White".split("|")).master("Arms changer");
+var knife_list = "Default|Bayonet|Flip knife|Gut knife|Karambit|M9 Bayonet|Butterfly|Falchion|Navaja|Shadow daggers|Stiletto|Bowie|Huntsman|Talon|Ursus|Classic|Paracord|Survival|Nomad|Skeleton".split("|");
+GUI.AddCheckbox("Knife changer", 57);
+GUI.AddDropdown("T Knife", knife_list).master("Knife changer");
+GUI.AddDropdown("CT Knife", knife_list).master("Knife changer");
+
+GUI.AddSubtab("Other");
+GUI.AddCheckbox("Better scope", 28).additional("color");
+GUI.AddSlider("Better scope weight", 1, 6, 2).master("Better scope");
+GUI.AddSlider("Better scope length", 0, 100, 14).master("Better scope");
+GUI.AddSlider("Better scope offset", 0, 100, 12).master("Better scope");
+GUI.AddCheckbox("Party Zeus", 21);
+
+GUI.AddSubtab("Extra");
+GUI.AddCheckbox("Custom thirdperson", 42);
+GUI.AddSlider("Thirdperson distance", 50, 300, 0).master("Custom thirdperson");
+GUI.AddSlider("Aspect ratio", 0, 300, 0);
+
+GUI.AddSubtab("GUI");
+GUI.AddCheckbox("Watermark", 31).additional("color");
+GUI.AddCheckbox("Indicators", 32);
+GUI.AddCheckbox("Indicators centered", 45).master("Indicators").flags(GUI.SAME_LINE);
+GUI.AddDropdown("Indicators type", ['Default', 'New', 'New v2']).master("Indicators");
 // кринж ебанный, эта хуйня вместо того что бы нормально и адекватно заменять цвет, ломает нахуй индикаторы, слива посмотри пожалуйста
-//GUI.AddCheckbox("Visuals", "GUI", "Custom color", 56).master("Indicators").additional("color");
-GUI.AddCheckbox("Visuals", "GUI", "Keybind list", 33).additional("color");
-GUI.AddCheckbox("Visuals", "GUI", "Spectator list", 34).additional("color");
-GUI.AddCheckbox("Visuals", "GUI", "Hit logs", 35).additional("color");
-GUI.AddColor("Visuals", "GUI", "Menu accent");
+GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
+GUI.AddCheckbox("Keybind list", 33).additional("color");
+GUI.AddCheckbox("Spectator list", 34).additional("color");
+GUI.AddCheckbox("Hit logs", 35).additional("color");
+GUI.AddColor("Menu accent");
 
 GUI.AddTab("Misc", "D");
-GUI.AddSubtab("Misc", "General");
-GUI.AddCheckbox("Misc", "General", "FPS Boost", 36);
-GUI.AddCheckbox("Misc", "General", "Better autostrafer", 37);
-GUI.AddCheckbox("Misc", "General", "Auto crouch in air", 60).master("Better autostrafer");
-GUI.AddCheckbox("Misc", "General", "Name breaker", 38);
-GUI.AddCheckbox("Misc", "General", "Vote revealer", 39);
-GUI.AddCheckbox("Misc", "General", "View enemy chat (not working in MM)", 40);
-GUI.AddCheckbox("Misc", "General", "Auto local server setup", 53);
-GUI.AddCheckbox("Misc", "General", "Clantag", 41);
-GUI.AddSubtab("Misc", "Keybinds fixer");
-var kb_fix_name = GUI.AddCheckbox("Misc", "Keybinds fixer", "Enabled (change original binds key)", 13).Name;
-GUI.AddHotkey("Misc", "Keybinds fixer", "Doubletap", "toggle").master(kb_fix_name);
-GUI.AddHotkey("Misc", "Keybinds fixer", "Hide shots", "toggle").master(kb_fix_name);
-GUI.AddHotkey("Misc", "Keybinds fixer", "Inverter", "toggle").master(kb_fix_name);
-GUI.AddHotkey("Misc", "Keybinds fixer", "Thirdperson", "toggle").master(kb_fix_name);
-GUI.AddHotkey("Misc", "Keybinds fixer", "Fake duck", "hold").master(kb_fix_name);
-GUI.AddHotkey("Misc", "Keybinds fixer", "Force body aim", "toggle").master(kb_fix_name);
-GUI.AddHotkey("Misc", "Keybinds fixer", "Force safe point", "toggle").master(kb_fix_name);
+
+GUI.AddSubtab("General");
+GUI.AddCheckbox("FPS Boost", 36);
+GUI.AddCheckbox("Better autostrafer", 37);
+GUI.AddCheckbox("Auto crouch in air", 60).master("Better autostrafer");
+GUI.AddCheckbox("Name breaker", 38);
+GUI.AddCheckbox("Vote revealer", 39);
+GUI.AddCheckbox("View enemy chat (not working in MM)", 40);
+GUI.AddCheckbox("Auto local server setup", 53);
+GUI.AddCheckbox("Clantag", 41);
+
+GUI.AddSubtab("Keybinds fixer");
+
+{
+	var n = GUI.AddCheckbox("Enabled (change original binds key)", 13).Name;
+	GUI.AddHotkey("Doubletap", "toggle").master(n);
+	GUI.AddHotkey("Hide shots", "toggle").master(n);
+	GUI.AddHotkey("Inverter", "toggle").master(n);
+	GUI.AddHotkey("Thirdperson", "toggle").master(n);
+	GUI.AddHotkey("Fake duck", "hold").master(n);
+	GUI.AddHotkey("Force body aim", "toggle").master(n);
+	GUI.AddHotkey("Force safe point", "toggle").master(n);
+}
 
 GUI.InitElements();
 
@@ -2366,15 +2404,15 @@ function mindamage(){
 			}
 		}
 		if(force_mindamage_override !== false) mindamage = force_mindamage_override;
-		if(GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override")) mindamage = over.Value;
-		if(GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2")) mindamage = over2.Value;
+		if(GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override")) mindamage = over.GetValue();
+		if (GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2")) mindamage = over2.GetValue();
 		if(mindamage !== null){
 			mindamage_active = true;
 			block_set7 = false;
 			UI.SetValue("Rage", weapon.toUpperCase(), "Targeting", "Minimum damage", mindamage);
 		}
 		else if(!block_set7){
-			UI.SetValue("Rage", weapon.toUpperCase(), "Targeting", "Minimum damage", orig.Value);
+			UI.SetValue("Rage", weapon.toUpperCase(), "Targeting", "Minimum damage", orig.GetValue());
 		}
 	}
 
@@ -2384,11 +2422,11 @@ function mindamage(){
 
 }
 function isMindamageActive(){
-	return GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override") || GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2");
+	return isAlive && (GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override") || GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2")) &&
+		!~["Knife", "flashbang", "hegrenade", "smokegrenade", "molotov", "decoy", "incgrenade", "C4", "none"].indexOf(getWeaponName());
 }
 function mindamageGetIndicatorString(){
-	if(!isAlive) return "DMG";
-	return ("DMG: " + UI.GetValue("Rage", getWeaponGroup(), "Targeting", "Minimum damage")) || "dmg";
+	return isMindamageActive() ? ("dmg: " + UI.GetValue("Rage", getWeaponGroup(), "Targeting", "Minimum damage")) : "dmg";
 }
 
 Global.RegisterCallback("Draw", "mindamage");
@@ -2918,7 +2956,7 @@ Global.RegisterCallback("CreateMove", "betterAutoStrafer");
 var block_set6 = false;
 var betterScopeActive = false;
 function betterScope() {
-	if (!GUI.GetValue("Visuals", "Other", "Better scope")) return;
+	if (!GUI.GetValue("Visuals", "Other", "Better scope") || !isAlive) return;
 	var scoped = Entity.GetProp(local, 'DT_CSPlayer', 'm_bIsScoped');
 	if (!isAlive || !World.GetServerString() || !scoped) return;
 	var startX = Math.floor(ScreenSize[0] / 2 + 1);
@@ -2934,7 +2972,7 @@ function betterScope() {
 	renderScopeLine(startX, startY + off, sizeY, sizeX, 0, c2, c1);
 }
 function betterScope2() {
-	if (!GUI.GetValue("Visuals", "Other", "Better scope")) return;
+	if (!GUI.GetValue("Visuals", "Other", "Better scope") || !isAlive) return;
 	if (Cheat.FrameStage() != 5) return;
 	var scoped = Entity.GetProp(local, 'DT_CSPlayer', 'm_bIsScoped');
 	UI.SetValue("Visual", "WORLD", "View", "FOV while scoped", /*UI.IsHotkeyActive("Visual", "WORLD", "View", "Thirdperson")*/false);
@@ -3264,70 +3302,55 @@ Cheat.RegisterCallback('Draw', 'nade_draw')
 var indicators_paths = [
 //	0								1														2					3					4
 	[mindamageGetIndicatorString,	[],														isMindamageActive,	[241, 239, 214],	0],
-	["DT",							["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
-	["HIDE",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
-	["BACKSHOOT",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
-	["DUCK",						["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
-	["BAIM",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
-	["SAFE",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
-	["PEEK",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
+	["dt",							["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
+	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
+	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
+	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
+	["ld", 							["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
+	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
+	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
+	["legit aa",					[],														isLegitAAActive,	[244, 205, 166],	0],
+	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[165, 200, 228],	0],
+	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
 ]	
 function indicators(){
 	if(!GUI.GetValue("Visuals", "GUI", "Indicators") || !isAlive) return;
 	if(Input.IsKeyPressed(27)) local_buymenu_opened = false;
-	if (GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta")){ var aa = "LOW DELTA"} else if (isLegitAAActive()){ var aa = "LEGIT AA"} else if (GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding")){ var aa = "FREESTANDING"} else { var aa = "DYNAMIC"}
+	var aa = (GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta") ? "LOW DELTA" :
+	(isLegitAAActive() ? "LEGIT AA" :
+	(GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding") ? "FREESTANDING" : "DYNAMIC")));
+
 	var font = Render.AddFont("Segoe UI", 7, 600);
 	var speed = 14;
 	var margin = 10
 	var x = ScreenSize[0] / 2;
 	var y = ScreenSize[1] / 2 + 9 + 10;
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
-	var add = centered ? 0 : 5
-	var addx = centered ? 1 : 2
-	// кринж, два отдельных вара, потому что из за рендера вт
-	var addy = centered ? 1 : -20
-	x = x + add
-	if(GUI.GetValue("Visuals", "GUI", "Indicators type") == 0){
-	for(indicator_path in indicators_paths){
-		var indicator = indicators_paths[indicator_path];
-		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
-		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin), centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
-		y += (indicator[4] / 255) * margin;
-		}
+	var type = GUI.GetValue("Visuals", "GUI", "Indicators type");
+	var not_def = (type !== 0);
+	x = (not_def) ? x + (centered ? 0 : 5) : x;
+	if (not_def) {
+		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font);
+		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
+		Render.StringCustom(x, y + 10, centered, aa, [193, 199, 255, 255], font);
 	}
-	else if(GUI.GetValue("Visuals", "GUI", "Indicators type") == 1){
-	Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font)
-	Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font)
-	Render.StringCustom(x, y, centered, "OTCSYNC", [193, 199, 255, 255], font)
-	Render.StringCustom(x, y + 10, centered, aa, [193, 199, 255, 255], font)
-	for(indicator_path in indicators_paths){
-		var indicator = indicators_paths[indicator_path];
-		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
-		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 21, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 20, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
-		y += (indicator[4] / 255) * margin;
-		}
+	if (type === 1) Render.StringCustom(x, y, centered, "OTCSYNC", [193, 199, 255, 255], font)
+	else if (type === 2) {
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isInverted() ? [193, 199, 255, 255] : [255, 255, 255, 255]), font);
+		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isInverted() ? [255, 255, 255, 255] : [193, 199, 255, 255]), font);
 	}
-	else if(GUI.GetValue("Visuals", "GUI", "Indicators type") == 2){
-	Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font)
-	Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font)
-	Render.StringCustom(x - 12 / addy, y, centered, "OTC", isInverted() ? [193, 199, 255, 255] : [255,255,255,255], font)
-	Render.StringCustom(x + 9 * addx, y, centered, "SYNC", isInverted() ? [255,255,255,255] : [193, 199, 255, 255], font)
-	Render.StringCustom(x, y + 10, centered, aa, [193, 199, 255, 255], font)
-	for(indicator_path in indicators_paths){
+	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
+		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
+		if (not_def && ~("fd|ld|legit aa|freestand".split("|")).indexOf(text)) continue;
+		text = (not_def && text == "auto") ? "peek" : text;
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 21, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 20, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
+		text = (not_def) ? text.toUpperCase() : text;
+		var marginy = not_def ? 20 : 0;
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
+		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + marginy, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
 		y += (indicator[4] / 255) * margin;
-		}
 	}
 }
 
