@@ -1808,6 +1808,7 @@ GUI.AddSubtab("World");
 GUI.AddCheckbox("Custom Bloom", 20);
 GUI.AddSlider("World brightness", -50, 0, 0);
 GUI.AddCheckbox("Nade prediction", 27).additional("color");
+GUI.AddCheckbox("Line tracer", 61).master("Nade prediction").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Trail", 29).additional("color");
 
 GUI.AddSubtab("Players");
@@ -3201,12 +3202,11 @@ function grenade_warning_tick() {
 function draw_warning(xzy) {
 	var x = Render.WorldToScreen(xzy[0])[0]
 	var y = Render.WorldToScreen(xzy[0])[1]
-	var circle_color = [0, 0, 0, 190];
+	var color = GUI.GetColor("Visuals", "World", "Nade prediction");
 	const draw_ind = function (x, y, str, oof, xzy) {
 		var distance = Math.round(vectorDistance(Entity.GetRenderOrigin(local), xzy) / 50)
 		if (distance > 25) return;
-		Render.FilledCircle(x, y, oof ? (21 + Globals.Tickcount() / 7 % 5) : 25, distance < 6 ? [235, 64, 52, 255] : circle_color)
-		Render.String(x - 8.8, y - 15.6, 0, str, distance < 6 ? [255, 255, 255, 255] : [119, 121, 79, 255], 5);
+		var radius = oof ? (18 + Globals.Tickcount() / 7 % 5) : 16
 		if (str == "I"){
 			var armor = Entity.GetProp(local, "CCSPlayerResource", "m_iArmor");
 			const origin = Entity.GetEyePosition(local);
@@ -3231,9 +3231,13 @@ function draw_warning(xzy) {
 			}
 			damage = Clamp(Math.ceil(damage - 2), 0, 100);
 			if (damage != 0) damage += 3
-			Render.String(x - 9.2, y + 5.6, 0, damage + "hp", [255, 255, 255, 255], 2)
-		}
-		else Render.String(x - 9.2, y + 5.6, 0, distance + "m", [255, 255, 255, 255], 2)
+			Render.String(x, y + 3.6, 1, damage + "hp", [255, 255, 255, 255], 2)
+		} 
+		else Render.String(x, y + 6.6, 1, distance + "m", [255, 255, 255, 255], 2)
+        Render.FilledCircle(x, y, radius, [color[0], color[1], color[2], alpha && 50])
+        if(!oof) Render.Circle(x, y, 18 + Globals.Tickcount() / 7 % 5, [color[0], color[1], color[2], alpha && 50])
+        Render.Circle(x, y, radius, [color[0], color[1], color[2], alpha && 50 + 25])
+        Render.StringCustom(x + 1, y - 15, oof ? (18 + Globals.Tickcount() / 7 % 5) : 10, str, [255, 255, 255, alpha && 255], 5);
 	}
 	var str = xzy[2] ? "K" : "I";
 	var alpha = (xzy[1] - Globals.Tickcount()) * 2
@@ -3262,6 +3266,7 @@ function draw_warning(xzy) {
 function nade_draw() {
 	if (!GUI.GetValue("Visuals", "World", "Nade prediction") || !isAlive) return;
 	var color = GUI.GetColor("Visuals", "World", "Nade prediction");
+	if (GUI.GetValue("Visuals", "World", "Line tracer"))
 	for (var i = 0; i < lines.length; i++) {
 		var line = lines[i]
 		var alpha = (line[2] - Globals.Tickcount())
@@ -3298,6 +3303,13 @@ function nade_draw() {
 
 Cheat.RegisterCallback('CreateMove', 'grenade_warning_tick')
 Cheat.RegisterCallback('Draw', 'nade_draw')
+
+function isInvetted(){
+	var diff = Local.GetRealYaw() - Local.GetFakeYaw()
+	while(diff > 180) diff -= 360;
+	while(diff < 180) diff += 360;
+	return Math.abs(diff) >= 360;
+}
 
 var indicators_paths = [
 //	0								1														2					3					4
@@ -3336,8 +3348,8 @@ function indicators(){
 	}
 	if (type === 1) Render.StringCustom(x, y, centered, "OTCSYNC", [193, 199, 255, 255], font)
 	else if (type === 2) {
-		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isInverted() ? [193, 199, 255, 255] : [255, 255, 255, 255]), font);
-		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isInverted() ? [255, 255, 255, 255] : [193, 199, 255, 255]), font);
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isInvetted() ? [193, 199, 255, 255] : [255, 255, 255, 255]), font);
+		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isInvetted() ? [255, 255, 255, 255] : [193, 199, 255, 255]), font);
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
