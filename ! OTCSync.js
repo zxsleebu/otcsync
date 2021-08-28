@@ -1200,10 +1200,10 @@ var CursorPos = Input.GetCursorPosition();
 GUI.CacheVariables = function(){
 	ScreenSize = Render.GetScreenSize();
 	CursorPos = Input.GetCursorPosition();
-}
-GUI.CreateMove = function(){
 	local = Entity.GetLocalPlayer();
 	isAlive = Entity.IsAlive(local);
+}
+GUI.CreateMove = function(){
 }
 GUI.AddTab = function(name, icon){
 	GUI._MenuElements[name] = {};
@@ -1704,8 +1704,8 @@ GUI.AddCheckbox("Leg prediction", 56);
 
 GUI.AddSubtab("Min-DMG");
 GUI.AddCheckbox("Two shot on Auto", 4);
-GUI.AddCheckbox("Force HP + value if Min-Damage < HP", 2);
-GUI.AddSlider("HP + value", 0, 30, 5).master("Force HP + value if Min-Damage < HP");
+GUI.AddCheckbox("Force HP + value if HP < Min-DMG", 2);
+GUI.AddSlider("HP + value", 0, 30, 5).master("Force HP + value if HP < Min-DMG");
 
 GUI.AddSubtab("Min-DMG Override");
 var dmg_el_name = GUI.AddHotkey("Min-damage override", "hold").Name;
@@ -2378,16 +2378,16 @@ function mindamage(){
 
 		//Overriding mindamage
 		var mindamage = null;
-		if(GUI.GetValue("Rage", "Min-DMG", "Force HP + value if Min-Damage < HP")){
+		if (GUI.GetValue("Rage", "Min-DMG", "Force HP + value if HP < Min-DMG")){
 			if(ragebot_target && ragebot_target !== null && ragebot_target !== undefined && Entity.IsAlive(ragebot_target)){
 				var value = GUI.GetValue("Rage", "Min-DMG", "HP + value");
-				mindamage = 100 + value;
+				if (Entity.GetProp(ragebot_target, 'CBasePlayer', 'm_iHealth') < orig.GetValue()) mindamage = 100 + value;
 			}
 		}
 		if(force_mindamage_override !== false) mindamage = force_mindamage_override;
 		if(GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override")) mindamage = over.GetValue();
 		if (GUI.IsHotkeyActive("Rage", "Min-DMG Override", "Min-damage override 2")) mindamage = over2.GetValue();
-		if(mindamage !== null){
+		if(mindamage !== null && isAlive){
 			mindamage_active = true;
 			block_set7 = false;
 			UI.SetValue("Rage", weapon.toUpperCase(), "Targeting", "Minimum damage", mindamage);
