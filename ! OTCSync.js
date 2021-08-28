@@ -207,8 +207,8 @@ GUI.Draw = function(){
 	//Cheat.Print((performance.now() - GUI.DrawTime).toFixed(3) + "\n");
 }
 GUI.DrawMenu = function(){
-	var MenuX = Easing(GUI.X + (GUI.Scale(GUI.Width) / 2), GUI.X, GUI._MenuAnimation[0]);
-	var MenuY = Easing(GUI.Y + ((GUI.Height) / 2), GUI.Y, GUI._MenuAnimation[0]);
+	var MenuX = Easing(GUI.X + GUI.Scale(GUI.Width) / 2, GUI.X, GUI._MenuAnimation[0]);
+	var MenuY = Easing(GUI.Y + GUI.Scale(GUI.Height) / 2, GUI.Y, GUI._MenuAnimation[0]);
 	var MenuHeight = Easing(0, GUI.Scale(GUI.Height), GUI._MenuAnimation[0]);
 	var MenuWidth = Easing(0, GUI.Scale(GUI.Width), GUI._MenuAnimation[0]);
 	Render.RoundedRect(MenuX, MenuY, MenuWidth, MenuHeight, GUI.Radius, GUI.Colors.Background);
@@ -1531,6 +1531,25 @@ Render.Arc = function(x, y, r1, r2, s, d, col){
 		Render.Line(x + Math.cos(rad) * r1, y + Math.sin(rad) * r1, x + Math.cos(rad) * r2, y + Math.sin(rad) * r2, col);
 	}
 }
+//x, y, radius, radius_inner, start_angle, end_angle, segments, color
+Render.ArcPolygon = function (x, y, radius, inner, start, end, seg, col) {
+	while (360 % seg != 0) seg++;
+	seg = 360 / seg;
+	for (var i = start; i < start + end; i = i + seg) {
+		var rad = i * Math.PI / 180;
+		var rad2 = (i + seg) * Math.PI / 180;
+		var rad_cos = Math.cos(rad);
+		var rad_sin = Math.sin(rad);
+		var rad2_cos = Math.cos(rad2);
+		var rad2_sin = Math.sin(rad2);
+		var x1 = x + rad2_cos * radius;
+		var y1 = y + rad2_sin * radius;
+		var x2 = x + rad_cos * inner;
+		var y2 = y + rad_sin * inner;
+		Render.Polygon([[x + rad_cos * radius, y + rad_sin * radius], [x1, y1], [x2, y2]], col);
+		Render.Polygon([[x2, y2], [x1, y1], [x + rad2_cos * inner, y + rad2_sin * inner]], col);
+	}
+}
 UI.IsCursorInBox = function(x, y, width, height) {
 	var cursor = Input.GetCursorPosition()
 	if (cursor[0] > x && cursor[0] < x + width && cursor[1] > y && cursor[1] < y + height)
@@ -2333,6 +2352,13 @@ function getWeaponGroup(){
 	return group;
 }
 
+function isRealInverted() {
+	var diff = Local.GetRealYaw() - Local.GetFakeYaw()
+	while (diff > 180) diff -= 360;
+	while (diff < 180) diff += 360;
+	return Math.abs(diff) >= 360;
+}
+
 
 
 function enemies(){
@@ -2793,12 +2819,10 @@ function legitAA(){
 		if (getWeaponName() == "C4") { use(); return }
 		var eyepos = Entity.GetEyePosition(local);
 		var C4 = Entity.GetEntitiesByClassID(129);
-		if (C4 !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) { use(); return }
+		if (C4 !== undefined && C4[0] !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) { use(); return }
 		var hostages = Entity.GetEntitiesByClassID(97);
 		if (hostages !== undefined && hostages.length > 0) {
-			for (hostage in hostages) {
-				if (calcDist(Entity.GetRenderOrigin(hostages[hostage]), eyepos) <= 100) { use(); return }
-			}
+			for (hostage in hostages) if (calcDist(Entity.GetRenderOrigin(hostages[hostage]), eyepos) <= 100) { use(); return }
 		}
 	}
 	else {
@@ -3211,13 +3235,13 @@ function draw_warning(xzy) {
 			}
 			damage = Clamp(Math.ceil(damage - 2), 0, 100);
 			if (damage != 0) damage += 3
-			Render.String(x, y + 3.6, 1, damage + "hp", [255, 255, 255, 255], 2)
+			Render.String(x, y + 4.6, 1, damage + "hp", [255, 255, 255, 255], 2)
 		} 
-		else Render.String(x, y + 6.6, 1, distance + "m", [255, 255, 255, 255], 2)
+		else Render.String(x, y + 4.6, 1, distance + "m", [255, 255, 255, 255], 2)
         Render.FilledCircle(x, y, radius, [color[0], color[1], color[2], alpha && 50])
         if(!oof) Render.Circle(x, y, 18 + Globals.Tickcount() / 7 % 5, [color[0], color[1], color[2], alpha && 50])
         Render.Circle(x, y, radius, [color[0], color[1], color[2], alpha && 50 + 25])
-        Render.StringCustom(x + 1, y - 15, oof ? (18 + Globals.Tickcount() / 7 % 5) : 10, str, [255, 255, 255, alpha && 255], 5);
+        Render.StringCustom(x + 1, y - 16, oof ? (18 + Globals.Tickcount() / 7 % 5) : 10, str, [255, 255, 255, alpha && 255], 5);
 	}
 	var str = xzy[2] ? "K" : "I";
 	var alpha = (xzy[1] - Globals.Tickcount()) * 2
@@ -3259,10 +3283,7 @@ function nade_draw() {
 			}
 		}
 	}
-	for (var i = 0; i < hits.length; i++) {
-		var line = hits[i]
-		draw_warning(line)
-	}
+	for (var i = 0; i < hits.length; i++) draw_warning(hits[i])
 
 
 	for (var i = 0; i < pmolotov.length; i++) {
@@ -3284,17 +3305,33 @@ function nade_draw() {
 Cheat.RegisterCallback('CreateMove', 'grenade_warning_tick')
 Cheat.RegisterCallback('Draw', 'nade_draw')
 
-function isInvetted(){
-	var diff = Local.GetRealYaw() - Local.GetFakeYaw()
-	while(diff > 180) diff -= 360;
-	while(diff < 180) diff += 360;
-	return Math.abs(diff) >= 360;
+function renderDtCircle(x, y, col){
+	var s = 5;
+	x += 3;
+	y += 3;
+	function charge(i) {
+		var e = Exploit.GetCharge();
+		e = (e <= 0.25) ? 0.1 : e;
+		return Clamp(Math.floor(((e * s) - i) * s), 0, s);
+	}
+	Render.FilledRect(x + 1, y, charge(0), 2, col);
+	Render.FilledRect(x + s, y + 1, 2, charge(1), col);
+	Render.FilledRect(x + s - (m1 = charge(2)) + 1, y + s, m1, 2, col);
+	Render.FilledRect(x, y - (m2 = charge(3)) + s + 1, 2, m2, col);
+}
+
+function renderDtAndCircle(x, y, centered, i){
+	var text = "dt     ";
+	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
+	renderDtCircle(x, y + 1, [0, 0, 0, Clamp(i[4] / 2 + 127, 0, 200)]);
+	renderDtCircle(x, y, [i[3][0], i[3][1] * Exploit.GetCharge(), i[3][2], Clamp(i[4] - 35, 0, 220)]);
+	return text;
 }
 
 var indicators_paths = [
 //	0								1														2					3					4
 	[mindamageGetIndicatorString,	[],														isMindamageActive,	[241, 239, 214],	0],
-	["dt",							["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
+	[renderDtAndCircle,				["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
 	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
 	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
 	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
@@ -3328,20 +3365,21 @@ function indicators(){
 	}
 	if (type === 1) Render.StringCustom(x, y, centered, "OTCSYNC", [193, 199, 255, 255], font)
 	else if (type === 2) {
-		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isInvetted() ? [193, 199, 255, 255] : [255, 255, 255, 255]), font);
-		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isInvetted() ? [255, 255, 255, 255] : [193, 199, 255, 255]), font);
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? [193, 199, 255, 255] : [255, 255, 255, 255]), font);
+		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? [255, 255, 255, 255] : [193, 199, 255, 255]), font);
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
-		var text = ((typeof indicator[0] === "function") ? indicator[0]() : indicator[0]);
-		if (not_def && ~("fd|ld|legit aa|freestand".split("|")).indexOf(text)) continue;
-		text = (not_def && text == "auto") ? "peek" : text;
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		text = (not_def) ? text.toUpperCase() : text;
 		var marginy = not_def ? 20 : 0;
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, y - margin + Math.floor((indicator[4] / 255) * margin) + marginy, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
+		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
+		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, indicator) : indicator[0]);
+		if (not_def && ~("fd|ld|legit aa|freestand".split("|")).indexOf(text)) continue;
+		text = (not_def && text == "auto") ? "peek" : text;
+		text = (not_def) ? text.toUpperCase() : text;
+		Render.StringCustom(x, cY + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
+		Render.StringCustom(x, cY, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
 		y += (indicator[4] / 255) * margin;
 	}
 }
