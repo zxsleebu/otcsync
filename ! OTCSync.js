@@ -3320,11 +3320,11 @@ function renderDtCircle(x, y, col){
 	Render.FilledRect(x, y - (m2 = charge(3)) + s + 1, 2, m2, col);
 }
 
-function renderDtAndCircle(x, y, centered, i){
+function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
-	renderDtCircle(x, y + 1, [0, 0, 0, Clamp(i[4] / 2 + 127, 0, 200)]);
-	renderDtCircle(x, y, [i[3][0], i[3][1] * Exploit.GetCharge(), i[3][2], Clamp(i[4] - 35, 0, 220)]);
+	renderDtCircle(x, y + 1, [0, 0, 0, Clamp(i[4] / 1.33, 0, 200)]);
+	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4] - 35, 0, 220)]);
 	return text;
 }
 
@@ -3357,29 +3357,31 @@ function indicators(){
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "GUI", "Indicators type");
 	var not_def = (type !== 0);
+	var custom_color = (GUI.GetValue("Visuals", "GUI", "Indicators custom color") ? GUI.GetColor("Visuals", "GUI", "Indicators custom color") : false);
 	x = (not_def) ? x + (centered ? 0 : 5) : x;
 	if (not_def) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
-		Render.StringCustom(x, y + 10, centered, aa, [193, 199, 255, 255], font);
+		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
 	}
-	if (type === 1) Render.StringCustom(x, y, centered, "OTCSYNC", [193, 199, 255, 255], font)
+	if (type === 1) Render.StringCustom(x, y, centered, "OTCSYNC", custom_color || [193, 199, 255, 255], font)
 	else if (type === 2) {
-		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? [193, 199, 255, 255] : [255, 255, 255, 255]), font);
-		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? [255, 255, 255, 255] : [193, 199, 255, 255]), font);
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
+		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
-		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9) && !local_buymenu_opened;
+		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9)/* && !local_buymenu_opened*/;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var marginy = not_def ? 20 : 0;
 		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
-		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, indicator) : indicator[0]);
+		var color = custom_color || indicator[3];
+		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_def && ~("fd|ld|legit aa|freestand".split("|")).indexOf(text)) continue;
 		text = (not_def && text == "auto") ? "peek" : text;
 		text = (not_def) ? text.toUpperCase() : text;
 		Render.StringCustom(x, cY + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, cY, centered, text, [indicator[3][0], indicator[3][1], indicator[3][2], indicator[4]], font);
+		Render.StringCustom(x, cY, centered, text, [color[0], color[1], color[2], indicator[4]], font);
 		y += (indicator[4] / 255) * margin;
 	}
 }
