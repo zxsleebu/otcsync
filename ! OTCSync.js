@@ -330,7 +330,7 @@ GUI.DrawHeader = function(){
 
 	var Username = Cheat.GetUsername();
 	var Username = rusToEng(Username.charAt(0).toUpperCase() + Username.slice(1));
-	if(!mustDisplayString(Username, GUI.Fonts.Username, 11)) return;
+	if(!mustDisplayString(Username, GUI.Fonts.Username, GUI.Scale(11))) return;
 	var UsernameTextSize = Render.TextSizeCustom(Username, GUI.Fonts.Username);
 	var UsernameX = GUI.X + GUI.Scale(GUI.Width) - 6 - UsernameTextSize[0];
 	var UsernameColor = GUI.Colors.AnimateBackground(GUI.Colors.Username);
@@ -2206,7 +2206,10 @@ function rusToEng(str){
         if(letter === undefined){rus += str[i]; continue}
 		rus += letter;
     }
-    return rus;
+	var alphabet = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя", result = "", A = [];
+    for(var i in alphabet) A[alphabet[i]] = "?"
+    for(var i in rus) { var c = rus.charAt(i); result += A[c] || c }
+    return result;
 }
 function ChokedCommands(){
 	if(!World.GetServerString()) return 0;
