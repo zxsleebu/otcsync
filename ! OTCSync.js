@@ -13,7 +13,7 @@ function ptr(obj){
 	}
 })(function (e) {
 	e.time = new Date();
-	Cheat.Print("Finded error in the script code, please send next message to the developer: \n");
+	Cheat.Print("Found error in the script code, please send next message to the developer: \n");
 	Cheat.PrintColor([255, 74, 74, 255], "Information for the developer: error at line " + e.lineNumber + "\n");
 	return e;
 });
@@ -25,8 +25,8 @@ var GUI = Duktape.compact({
 	AnimationSpeed: 1,
 	X: 100,
 	Y: 100,
-	Width: 480,
-	Height: 324,
+	Width: 490,
+	Height: 330,
 	Radius: 10,
 	SubtabListWidth: 150,
 	SubtabListWidthScaled: 150,
@@ -62,7 +62,7 @@ var GUI = Duktape.compact({
 	_DropdownPos: [0, 0],
 	_DropdownWidth: 100,
 	_DropdownSelectingElement: false,
-	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50},
+	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30},
 	ElementProto: {},
 	ContainerWidth: 270, //in gui.subtablistdraw
 	Render: [],
@@ -447,6 +447,9 @@ GUI.DrawElements = function(){
 			case "dropdown":
 				GUI.DrawDropdown(ElementX, ElementY, Element.Name, ElementId);
 				break;
+			case "label":
+				GUI.DrawLabel(ElementX, ElementY, Element.Name);
+				break;
 		}
 		ElementOffsetY += GUI.Scale(GUI._ElementOffsets[Element.Type]);
 	}
@@ -591,6 +594,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 		if(PressedKeys.length && !GUI._ClickBlock){
 			var mode = (Hotkey.Mode === "none") ? Hotkey.DefaultMode : Hotkey.Mode;
 			var pressedkey = PressedKeys[0][0];
+
 			//genius code ikr
 			if(pressedkey == 27) pressedkey = !+(mode = Hotkey.Mode = "none");
 			else Hotkey.SetValue([mode, pressedkey]);
@@ -600,7 +604,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	}
 	if (Element.Key == 0) KeyName = "none";
 	var HotkeyKeyNameTextSize = Render.TextSizeCustom(KeyName, GUI.Fonts.HotkeyKeyName);
-	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] + 4, 16, 100));
+	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] * 1.1 + 2, 14, 100));
 	var HotkeyX = HotkeyTextX + GUI.ContainerWidth - HotkeyWidth;
 
 	var HotkeyMenuWidth = GUI.Scale(40);
@@ -643,7 +647,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	Render.SmoothRect(HotkeyX, y + 16, HotkeyWidth, HotkeyHeight, HotkeyBorderColorAnimated);
 	Render.SmoothRect(HotkeyX + 1, y + 17, HotkeyWidth - 2, HotkeyHeight - 2, HotkeyColorAnimated);
 
-	Render.StringCustom(HotkeyX + (HotkeyWidth / 2) - (HotkeyKeyNameTextSize[0] / 2), y + 16, 0, KeyName, HotkeyTextColor, GUI.Fonts.HotkeyKeyName);
+	Render.StringCustom(HotkeyX + (HotkeyWidth / 2) - (HotkeyKeyNameTextSize[0] / 2) / 1.05, y + 16, 0, KeyName, HotkeyTextColor, GUI.Fonts.HotkeyKeyName);
 }
 GUI.DrawHotkeyMenu = function(){
 	var HotkeyMenuWidth = GUI.Scale(40);
@@ -1031,6 +1035,11 @@ GUI.DrawDropdownSelector = function(){
 		GUI._DropdownAnimation[2][Index] = Clamp(GUI._DropdownAnimation[2][Index], 0, 1);
 	}
 }
+GUI.DrawLabel = function(x, y, name){
+	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
+	var TextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
+	Render.StringCustom(x, y + GUI.Scale(12) + 2.6, 0, name, TextColor, GUI.Fonts.Menu);
+}
 GUI.ProcessDrag = function(){
 	if(!UI.IsMenuOpen()) return;
 	var HeaderLogoSize = Render.TextSizeCustom(GUI.LogoText, GUI.Fonts.HeaderLogo);
@@ -1224,7 +1233,7 @@ GUI.Element = function(name, type){
 	this.Id = this.Name + this.Tab[0] + this.Subtab[0];
 	this.Type = type;
 	this.Flags = 0;
-	GUI._ElementAnimation[this.Id] = 0;
+	if(type !== "label") GUI._ElementAnimation[this.Id] = 0;
 }
 GUI.Element.prototype.GetValue = function(){
 	return GUI.GetValue(this.Tab, this.Subtab, this.Name);
@@ -1289,6 +1298,10 @@ GUI.AddDropdown = function (name, elements) {
 	var E = new GUI.Element(name, "dropdown");
 	E.Elements = elements;
 	E.Value = 0;
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
+}
+GUI.AddLabel = function (name) {
+	var E = new GUI.Element(name, "label");
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
 GUI.GetMasterState = function(tab, subtab, name){
@@ -1472,17 +1485,19 @@ GUI.IsHotkeyActive = function(tab, subtab, name){
 	var Element = GUI._MenuElements[tab][subtab][Id];
 	if (Element.State !== null) return Element.State;
 	if (Element.Key === 0) return false;
+	var menuopen = UI.IsMenuOpen();
+	var pressed = Input.IsKeyPressed(Element.Key);
 	switch (Element.Mode) {
 		case "hold":
-			return Input.IsKeyPressed(Element.Key);
+			return !menuopen && pressed;
 		case "toggle":
 			if(!GUI.HotkeyToggle[Id][1]){
-				if(Input.IsKeyPressed(Element.Key)){
+				if(!menuopen && pressed){
 					GUI.HotkeyToggle[Id][1] = true;
 					GUI.HotkeyToggle[Id][0] = !GUI.HotkeyToggle[Id][0];
 				}
 			}
-			else if(!Input.IsKeyPressed(Element.Key)){
+			else if(!menuopen && !pressed){
 				GUI.HotkeyToggle[Id][1] = false;
 			}
 			return GUI.HotkeyToggle[Id][0];
@@ -1708,7 +1723,7 @@ GUI = Duktape.compact(GUI);
 Duktape.gc();
 
 //Last index is 62
-GUI.Init("OTC SYNC");
+GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
 
@@ -1762,6 +1777,7 @@ GUI.AddCheckbox("Recharge speed", 9);
 GUI.AddSlider("Recharge ticks", 0, 16, 10).master("Recharge speed");
 GUI.AddCheckbox("Lag peek (pizdec)", 54);
 GUI.AddSlider("Extrapolate ticks", 0, 16, 3).master("Lag peek (pizdec)");
+
 GUI.AddSubtab("Other");
 GUI.AddHotkey("Extended backtracking", "hold");
 GUI.AddHotkey("Force head", "hold");
@@ -1854,7 +1870,7 @@ GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hit logs", 35).additional("color");
-GUI.AddDropdown("GUI Scale", ['75%', '100%', '125%', '150%']).SetValue(1);
+GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']);
 GUI.AddColor("Menu accent");
 
 GUI.AddTab("Misc", "D");
@@ -1862,7 +1878,7 @@ GUI.AddTab("Misc", "D");
 GUI.AddSubtab("General");
 GUI.AddCheckbox("FPS Boost", 36);
 GUI.AddCheckbox("Better autostrafer", 37);
-GUI.AddCheckbox("Auto crouch in air", 60).master("Better autostrafer");
+GUI.AddCheckbox("Auto crouch in air", 60).master("Better autostrafer").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Name breaker", 38);
 GUI.AddCheckbox("Vote revealer", 39);
 GUI.AddCheckbox("View enemy chat (not working in MM)", 40);
@@ -1872,7 +1888,8 @@ GUI.AddCheckbox("Clantag", 41);
 GUI.AddSubtab("Keybinds fixer");
 
 {
-	var n = GUI.AddCheckbox("Enabled (change original binds key)", 13).Name;
+	var n = GUI.AddCheckbox("Enabled", 13).Name;
+	GUI.AddLabel("Set otc3 binds to other keys and \"Toggle\"").master("Enabled");
 	GUI.AddHotkey("Doubletap", "toggle").master(n);
 	GUI.AddHotkey("Hide shots", "toggle").master(n);
 	GUI.AddHotkey("Inverter", "toggle").master(n);
@@ -1881,6 +1898,9 @@ GUI.AddSubtab("Keybinds fixer");
 	GUI.AddHotkey("Force body aim", "toggle").master(n);
 	GUI.AddHotkey("Force safe point", "toggle").master(n);
 }
+
+GUI.AddSubtab("Credits");
+GUI.AddLabel("OTC SYNC brought to you by:\n\nSleebu\nmoonx (ber$$erker)\nMased\n\nThanks 5nu$ community for moral support\n\nDonate: qiwi.com/n/sleebu\nSite: otcsync.js.org");
 
 GUI.InitElements();
 
@@ -2391,12 +2411,14 @@ function mindamage(){
 		//Tabbing min-damage sliders
 		weapon = weapon_groups[weapon];
 		var active = weapon == active_group;
-		var orig = GUI._MenuElements["Rage"]["Min-DMG Override"][weapon + " Original Min-DMGRM"];
-		var over = GUI._MenuElements["Rage"]["Min-DMG Override"][weapon + " Override Min-DMGRM"];
-		var over2 = GUI._MenuElements["Rage"]["Min-DMG Override"][weapon + " Override 2 Min-DMGRM"];
+		var mindmg = GUI._MenuElements["Rage"]["Min-DMG Override"];
+		var orig = mindmg[weapon + " Original Min-DMGRM"];
+		var over = mindmg[weapon + " Override Min-DMGRM"];
+		var over2 = mindmg[weapon + " Override 2 Min-DMGRM"];
 		var ot_dmg = UI.GetValue("Rage", weapon.toUpperCase(), "Targeting", "Minimum damage");
+
 		//Setting default mindamage
-		if(!original_mindmg_set && (ot_dmg !== over.Value && ot_dmg !== over2.Value)) orig.SetValue(ot_dmg);
+		if(!original_mindmg_set && orig.GetValue() !== 1 && (ot_dmg !== over.Value && ot_dmg !== over2.Value)) orig.SetValue(ot_dmg);
 	
 		if(active) orig.Flags = over.Flags = over2.Flags &= ~GUI.NOT_VISIBLE;
 		else orig.Flags = over.Flags = over2.Flags |= GUI.NOT_VISIBLE;
@@ -2673,13 +2695,8 @@ function autoscope(){
 Global.RegisterCallback("CreateMove", "autoscope");
 
 function doubletap(){
-	Convar.SetString("cl_windspeed", "100");
 	if(!isAlive) return;
-	var weapon = getWeaponName();
-	if (!GUI.GetValue("Rage", "Doubletap", "Recharge speed") || weapon === "Revolver"){
-		Exploit.EnableRecharge();
-		return;
-	}
+	if (!GUI.GetValue("Rage", "Doubletap", "Recharge speed") || getWeaponName() === "Revolver") return Exploit.EnableRecharge();
 	var charge = Exploit.GetCharge();
 	/*if (GUI.GetValue("Rage", "Doubletap", "Better DT (addon only)")){
 		Convar.SetString("cl_windspeed", "11" + (+((exploitsActive("dt") || (exploitsActive("dt") && exploitsActive("hs"))) && Exploit.GetCharge() === 1)));
@@ -2977,16 +2994,16 @@ function betterScope() {
 	renderScopeLine(startX, startY + off, sizeY, sizeX, 0, c2, c1);
 }
 function betterScope2() {
-	if (!GUI.GetValue("Visuals", "Other", "Better scope") || !isAlive) return;
+	if (!GUI.GetValue("Visuals", "Other", "Better scope")) return;
 	if (Cheat.FrameStage() != 5) return;
-	var scoped = Entity.GetProp(local, 'DT_CSPlayer', 'm_bIsScoped');
-	UI.SetValue("Visual", "WORLD", "View", "FOV while scoped", /*UI.IsHotkeyActive("Visual", "WORLD", "View", "Thirdperson")*/false);
-	UI.SetValue("Visual", "WORLD", "Entities", "Removals", UI.GetValue("Visual", "WORLD", "Entities", "Removals") &~ (1 << 2));
 	if (!isAlive || !World.GetServerString()) {
 		Convar.SetFloat("r_drawvgui", 1);
 		block_set6 = false;
 		return;
 	}
+	var scoped = Entity.GetProp(local, 'DT_CSPlayer', 'm_bIsScoped');
+	UI.SetValue("Visual", "WORLD", "View", "FOV while scoped", /*UI.IsHotkeyActive("Visual", "WORLD", "View", "Thirdperson")*/false);
+	UI.SetValue("Visual", "WORLD", "Entities", "Removals", UI.GetValue("Visual", "WORLD", "Entities", "Removals") &~ (1 << 2));
 	if (scoped) {
 		betterScopeActive = true;
 		Convar.SetString("r_drawvgui", "0");
@@ -3309,22 +3326,24 @@ function renderDtCircle(x, y, col){
 	var s = 5;
 	x += 3;
 	y += 3;
-	function charge(i) {
-		var e = Exploit.GetCharge();
-		e = (e <= 0.25) ? 0.1 : e;
-		return Clamp(Math.floor(((e * s) - i) * s), 0, s);
-	}
-	Render.FilledRect(x + 1, y, charge(0), 2, col);
-	Render.FilledRect(x + s, y + 1, 2, charge(1), col);
-	Render.FilledRect(x + s - (m1 = charge(2)) + 1, y + s, m1, 2, col);
-	Render.FilledRect(x, y - (m2 = charge(3)) + s + 1, 2, m2, col);
+	var adj = 0.33;
+	var charge = (Exploit.GetCharge() - adj) / (1 - adj);
+	var length = Math.floor(charge * 4 * s);
+	var arr = [];
+	for (i = 0; i < Math.floor(length / s); i++) arr.push(s);
+	var mod = Math.floor(length % s);
+	if(mod !== 0) arr.push(mod);
+	if(arr[0] !== undefined) Render.FilledRect(x + 1, y, arr[0], 2, col);
+	if(arr[1] !== undefined) Render.FilledRect(x + s, y + 1, 2, arr[1], col);
+	if(arr[2] !== undefined) Render.FilledRect(x - arr[2] + s + 1, y + s, arr[2], 2, col);
+	if(arr[3] !== undefined) Render.FilledRect(x, y - arr[3] + s + 1, 2, arr[3], col);
 }
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
-	renderDtCircle(x, y + 1, [0, 0, 0, Clamp(i[4] / 1.33, 0, 200)]);
-	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4] - 35, 0, 220)]);
+	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
+	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
 	return text;
 }
 
@@ -3335,7 +3354,7 @@ var indicators_paths = [
 	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
 	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
 	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
-	["ld", 							["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
+	["lowdelta", 					["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
 	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
 	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
 	["legit aa",					[],														isLegitAAActive,	[244, 205, 166],	0],
@@ -3377,7 +3396,7 @@ function indicators(){
 		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
-		if (not_def && ~("fd|ld|legit aa|freestand".split("|")).indexOf(text)) continue;
+		if (not_def && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
 		text = (not_def && text == "auto") ? "peek" : text;
 		text = (not_def) ? text.toUpperCase() : text;
 		Render.StringCustom(x, cY + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
@@ -3450,7 +3469,7 @@ var keybinds = [
 	[["Misc", "Keybinds fixer", "Fake duck"], ["Anti-Aim", "Extra", "Fake duck"]]
 ];
 function keybindFixer() {
-	if (!GUI.GetValue("Misc", "Keybinds fixer", "Enabled (change original binds key)")) return;
+	if (!GUI.GetValue("Misc", "Keybinds fixer", "Enabled")) return;
 	for (keybind in keybinds) {
 		keybind = keybinds[keybind];
 		if (!GUI.GetMasterState.apply(null, keybind[0])) continue;
@@ -3715,7 +3734,7 @@ var ticks_to_setup = null;
 var ticks_to_setup_player = null;
 
 function localServerSetupStart(){
-	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local) return;
+	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local || World.GetServerString() !== "local server") return;
 	ticks_to_setup = Globals.Tickcount() + 32;
 }
 
@@ -3747,7 +3766,7 @@ function localServerSetup(){
 Global.RegisterCallback("Draw", "localServerSetup");
 
 function localPlayerSetup(){
-	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local) return;
+	if(!GUI.GetValue("Misc", "General", "Auto local server setup") || Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local || World.GetServerString() !== "local server") return;
 	Cheat.ExecuteCommand("god");
 	Cheat.ExecuteCommand("give weapon_molotov");
     Cheat.ExecuteCommand("give weapon_hegrenade");
@@ -3866,7 +3885,7 @@ function legPrediction(){
 
 	var innacuracy = Local.GetInaccuracy() * 100;
 	innacuracy *= Local.GetSpread() * 450;
-	if(!isAlive || getVelocity(local) > 50 || !canShoot(local)) shoot = false;
+	if(!isAlive || getVelocity(local) > 50 || !canShoot(local) || GUI.IsHotkeyActive("Rage", "Other", "Force backshoot")) shoot = false;
 	var enemies = Entity.GetEnemies();
 	var local_pos = Entity.GetHitboxPosition(local, 0);
 	var ticks = 1;
@@ -3976,15 +3995,53 @@ Cheat.RegisterCallback("CreateMove", "noDesync");
 
 function guiScale(){
 	var scale = GUI.GetValue("Visuals", "GUI", "GUI Scale");
+	scale = (scale === 0) ? 1 : (scale === 1) ? 0 : scale;
 	GUI._Scale = 0.85 + (scale * 0.15);
 }
 
 Cheat.RegisterCallback("Draw", "guiScale");
 
+var last_shot_time = [];
+function forceBackshoot(){
+	if(!GUI.IsHotkeyActive("Rage", "Other", "Force backshoot")) return;
+	if(!isAlive) return;
+	var enemies = Entity.GetEnemies();
+
+	for(var i = 0; i < enemies.length; i++){
+		var enemy = enemies[i];
+		var diff = Globals.Tickcount() - last_shot_time[enemy];
+		if(!(diff >= 0 && diff <= 12)) Ragebot.IgnoreTarget(enemy);
+	}
+}
+
+Cheat.RegisterCallback("CreateMove", "forceBackshoot");
+
+function forceBackshootRecord(){
+	last_shot_time[Entity.GetEntityFromUserID(Event.GetInt("userid"))] = Globals.Tickcount();
+}
+
+Cheat.RegisterCallback("weapon_fire", "forceBackshootRecord");
+
+function freestanding(){
+	if(!GUI.GetMasterState("Anti-Aim", "General", "Freestanding")) return;
+	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction", GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding"));
+}
+Cheat.RegisterCallback("CreateMove", "freestanding");
+
+//Clean up
+function resetVars(){
+	if(Entity.GetEntityFromUserID(Event.GetInt("userid")) != local) return;
+	last_leg_pos = spectators_alpha = defensive_pos = tracer_lines = pmolotov = hits = lines = last_shot_time = [];
+}
+Global.RegisterCallback("player_connect_full", "resetVars");
+
 //Callbacks
 var Draw = GUI.Draw;
 var CreateMove = GUI.CreateMove;
 
+//Clean up
 Duktape.gc();
+
+//Callbacks
 Global.RegisterCallback("Draw", "Draw");
 Global.RegisterCallback("CreateMove", "CreateMove");
