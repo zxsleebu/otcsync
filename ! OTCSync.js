@@ -1808,7 +1808,8 @@ GUI.AddCheckbox("Slowwalk jitter", 15).master("Custom slowwalk");
 
 GUI.AddSubtab("Fake Lag");
 GUI.AddCheckbox("Static legs", 47);
-GUI.AddCheckbox("Experimental mode", 59).master("Static legs").flags(GUI.SAME_LINE);
+GUI.AddCheckbox("Slide break mode", 59).master("Static legs").flags(GUI.SAME_LINE);
+GUI.AddCheckbox
 GUI.AddSlider("Fake lag choke", 8, 15, 14).master("Static legs");
 GUI.AddCheckbox("No fake lag on revolver", 17);
 GUI.AddCheckbox("No fake lag on nades", 18);
@@ -2196,7 +2197,13 @@ var russianToEng = {
 	"1042": "B",
 	"1087": "n",
 	"1025": "E",
-	"1105": "e"
+	"1105": "e",
+	"1096": "w",
+	"1064": "W",
+	"1080": "u",
+	"1081": "u",
+	"1073": "6",
+	"1041": "6"
 }
 function rusToEng(str){
 	var rus = "";
@@ -2758,7 +2765,7 @@ function staticLegs(){
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag)
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1 * +!GUI.GetValue("Anti-Aim", "Fake Lag", "Experimental mode"));
+			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1 * +!GUI.GetValue("Anti-Aim", "Fake Lag", "Slide break mode"));
 			break;
 		case fakelag - 1:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", 0)
