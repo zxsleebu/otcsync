@@ -1864,8 +1864,7 @@ GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Indicators", 32);
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators").flags(GUI.SAME_LINE);
-GUI.AddDropdown("Indicators type", ['Default', 'New', 'New v2']).master("Indicators");
-// кринж ебанный, эта хуйня вместо того что бы нормально и адекватно заменять цвет, ломает нахуй индикаторы, слива посмотри пожалуйста
+GUI.AddDropdown("Indicators type", ['Default', 'New', 'New v2', 'New v3']).master("Indicators");
 GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
@@ -3378,9 +3377,12 @@ function indicators(){
 	var y = ScreenSize[1] / 2 + 9 + 10;
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "GUI", "Indicators type");
-	var not_def = (type !== 0);
+	var not_def = (type !== 0 && type !== 3);
 	var custom_color = (GUI.GetValue("Visuals", "GUI", "Indicators custom color") ? GUI.GetColor("Visuals", "GUI", "Indicators custom color") : false);
-	x = (not_def) ? x + (centered ? 0 : 5) : x;
+	real_yaw = Local.GetRealYaw();
+    fake_yaw = Local.GetFakeYaw();
+    delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
+	x = (not_def || type === 3) ? x + (centered ? 0 : 5) : x;
 	if (not_def) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
@@ -3390,17 +3392,25 @@ function indicators(){
 	else if (type === 2) {
 		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
 		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
+	} 
+	else if (type === 3 ) {
+		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, 255], font);
+		Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
+		Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
+		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
+		if (centered)
+		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9)/* && !local_buymenu_opened*/;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var marginy = not_def ? 20 : 0;
+		var marginy = not_def ? 20 : type === 3 ? 15 : 0;
 		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_def && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
-		text = (not_def && text == "auto") ? "peek" : text;
+		text = (not_def && type === 3 && text == "auto") ? "peek" : text;
 		text = (not_def) ? text.toUpperCase() : text;
 		Render.StringCustom(x, cY + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
 		Render.StringCustom(x, cY, centered, text, [color[0], color[1], color[2], indicator[4]], font);
