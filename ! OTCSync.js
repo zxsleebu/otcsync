@@ -3410,7 +3410,7 @@ function indicators(){
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_def && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
-		text = (not_def && type === 3 && text == "auto") ? "peek" : text;
+		text = (not_def && text == "auto" || type === 3 && text == "auto") ? "peek" : text;
 		text = (not_def) ? text.toUpperCase() : text;
 		Render.StringCustom(x, cY + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
 		Render.StringCustom(x, cY, centered, text, [color[0], color[1], color[2], indicator[4]], font);
