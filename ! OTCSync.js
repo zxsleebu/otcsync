@@ -63,6 +63,8 @@ var GUI = Duktape.compact({
 	_DropdownWidth: 100,
 	_DropdownSelectingElement: false,
 	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30},
+	_SubmenuTriggerAnimations: {},
+	_SubmenuAnimations: [0, 0],
 	ElementProto: {},
 	ContainerWidth: 270, //in gui.subtablistdraw
 	Render: [],
@@ -101,6 +103,7 @@ GUI.InitElements = function(){
 							UI.AddColorPicker(Element);
 							UI.SetEnabled(si, Element, 0);
 						}
+						else if(Elem.Submenu !== undefined) GUI._SubmenuTriggerAnimations[Element] = 0;
 						GUI.Checkboxes[Elem.Index] = Element;
 						break;
 					case "slider":
@@ -411,52 +414,51 @@ GUI.DrawElements = function(){
 			continue;
 		}
 		var Visible = true;
-		if(Element.Master){
-			if(Element.Master[0] === "!") var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][Element.Master.slice(1)]
-			else var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][Element.Master];
-
-			Visible = GUI.GetMasterState(GUI.ActiveTab, GUI.ActiveSubtab, Element.Master);
-
-			if(Master.Master){
-				Visible = Visible && GUI.GetMasterState(GUI.ActiveTab, GUI.ActiveSubtab, Master.Master);
-				if(Master.Type === "checkbox" && !Visible) Master.SetValue(false);
-			}
-
-			if(Element.Type === "checkbox" && !Visible) Element.SetValue(false);
+		function checkMaster(E){
+			if(!E.Master) return;
+			var Master = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][(E.Master[0] === "!") ? E.Master.slice(1) : E.Master];
+			Visible = GUI.GetMasterState(GUI.ActiveTab, GUI.ActiveSubtab, E.Master);
+			if(Master.Master && Visible) checkMaster(Master.Master);
+			if(E.Type === "checkbox" && !Visible) GUI._ElementAnimation[ElementId] = !E.SetValue(false);
 		}
+		checkMaster(Element);
 		if(!Visible) continue;
+
 		var ElementX = GUI.X + GUI.SubtabListWidthScaled + 16;
 		if(Element.Flags & GUI.SAME_LINE){
 			ElementX = GUI.X + ((GUI.Scale(GUI.Width) + GUI.SubtabListWidthScaled) / 2);
 			ElementOffsetY -= GUI.Scale(GUI._ElementOffsets[CurrentSubtab[ElementIds[i - 1]].Type]);
 		}
 		var ElementY = GUI.Y + TopOffset + ElementOffsetY + Easing(0, 30, 1 - GUI._MenuAnimation[4], 1);
-		switch(Element.Type){
-			case "checkbox":
-				GUI.DrawCheckbox(ElementX, ElementY, Element.Name, ElementId, Element.State);
-				break;
-			case "slider":
-				GUI.DrawSlider(ElementX, ElementY, Element.Name, ElementId);
-				break;
-			case "hotkey":
-				GUI.DrawHotkey(ElementX, ElementY, Element.Name, ElementId);
-				break;
-			case "color":
-				GUI.DrawColor(ElementX, ElementY, Element.Name, ElementId);
-				break;
-			case "dropdown":
-				GUI.DrawDropdown(ElementX, ElementY, Element.Name, ElementId);
-				break;
-			case "label":
-				GUI.DrawLabel(ElementX, ElementY, Element.Name);
-				break;
-		}
+		GUI.RenderElement(Element, ElementX, ElementY, ElementId);
 		ElementOffsetY += GUI.Scale(GUI._ElementOffsets[Element.Type]);
 	}
 	GUI.DrawHotkeyMenu();
 	GUI.DrawColorPicker();
 	GUI.DrawColorMenu();
 	GUI.DrawDropdownSelector();
+}
+GUI.RenderElement = function(E, x, y, id){
+	switch(E.Type){
+		case "checkbox":
+			GUI.DrawCheckbox(x, y, E.Name, id, E.State);
+			break;
+		case "slider":
+			GUI.DrawSlider(x, y, E.Name, id);
+			break;
+		case "hotkey":
+			GUI.DrawHotkey(x, y, E.Name, id);
+			break;
+		case "color":
+			GUI.DrawColor(x, y, E.Name, id);
+			break;
+		case "dropdown":
+			GUI.DrawDropdown(x, y, E.Name, id);
+			break;
+		case "label":
+			GUI.DrawLabel(x, y, E.Name);
+			break;
+	}
 }
 GUI.DrawTab = function(x, y, width, height, name){
 	var Animation = GUI._MenuAnimation[1] - ((GUI._MenuAnimation[2] >= 1) ? ((GUI._MenuAnimation[3] - 0.3) / 0.7) : 0);
@@ -508,16 +510,30 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 				Element.SetValue(!CheckboxState);
 			}
 		}
-		else{
-			GUI._ClickBlock = false;
-		}
+		else GUI._ClickBlock = false;
 	}
-	else{
-		GUI._ElementAnimation[id] -= 0.06;
-	}
+	else GUI._ElementAnimation[id] -= 0.06;
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
-	if(GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id].Color !== undefined && CheckboxState){
-		GUI.DrawColor(Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4), y, name, id, true);
+	if(CheckboxState){
+		var ElementEndX = Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4);
+		if(Element.Color !== undefined){
+			GUI.DrawColor(ElementEndX, y, name, id, true);
+		}
+		else if(Element.Submenu !== undefined){
+			var x = ElementEndX + GUI.Scale(4);
+			var y = y + GUI.Scale(21);
+			var w = 2 * parseInt(GUI.Scale(4) / 2);
+			var h = 2 * parseInt(GUI.Scale(6) / 2);
+			var color = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.FadeColor(GUI.Colors.ArrowColor, GUI.Colors.Text, GUI._SubmenuTriggerAnimations[id]), Animation, GUI._MenuAnimation[1] * 255);
+			if(UI.IsCursorInBox(x - w * 2, y - h - 1, w * 5, h * 3 + 2)){
+				GUI._SubmenuTriggerAnimations[id] += 0.06;
+			}
+			else{
+				GUI._SubmenuTriggerAnimations[id] -= 0.06;
+			}
+			GUI._SubmenuTriggerAnimations[id] = Clamp(GUI._SubmenuTriggerAnimations[id], 0, 1);
+			GUI.DrawRightArrow(x, y, w, h, color);
+		}
 	}
 }
 GUI.DrawSlider = function(x, y, name, id){
@@ -736,6 +752,13 @@ GUI.DrawColor = function(x, y, name, id, isAdditional){
 	
 
 	Render.FilledRect(ColorBoxX, ColorBoxY, ColorBoxWidth, ColorBoxHeight, ColorBoxColorAnimated);
+
+	//add some smoothness because it looks cool :)
+	var BackgroundColor = GUI.Colors.AnimateBackground(GUI.Colors.Background);
+	Render.FilledRect(ColorBoxX, ColorBoxY, 1, 1, BackgroundColor);
+	Render.FilledRect(ColorBoxX + ColorBoxWidth - 1, ColorBoxY, 1, 1, BackgroundColor);
+	Render.FilledRect(ColorBoxX, ColorBoxY + ColorBoxHeight - 1, 1, 1, BackgroundColor);
+	Render.FilledRect(ColorBoxX + ColorBoxWidth - 1, ColorBoxY + ColorBoxHeight - 1, 1, 1, BackgroundColor);
 
 	var ColorPickerMargin = 5;
 	var ColorPickerWidth = (ColorPickerMargin * 2) + 255;
@@ -1255,10 +1278,19 @@ GUI.Element.prototype.master = function(master){
 	this.Master = master + this.Tab[0] + this.Subtab[0];
 	return this;
 }
+GUI.Element.prototype.submenu = function(id){
+	this.SubmenuMaster = id + this.Tab[0] + this.Subtab[0];
+	return this;
+}
 GUI.Element.prototype.additional = function(type){
-	if(this.Type === "checkbox" && type === "color"){
-		this.Color = [255, 255, 255, 255];
-		this.ColorHSV = [0, 0, 1, 255];
+	if(this.Type === "checkbox"){
+		if(type === "color"){
+			this.Color = [255, 255, 255, 255];
+			this.ColorHSV = [0, 0, 1, 255];
+		}
+		else if(type === "submenu"){
+			this.Submenu = true;
+		}
 	}
 	return this;
 }
@@ -1863,8 +1895,8 @@ GUI.AddSlider("Aspect ratio", 0, 300, 0);
 
 GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
-GUI.AddCheckbox("Indicators", 32);
-GUI.AddCheckbox("Indicators centered", 45).master("Indicators").flags(GUI.SAME_LINE);
+GUI.AddCheckbox("Indicators", 32).additional("submenu");
+GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
 GUI.AddDropdown("Indicators type", ['Default', 'New', 'New v2', 'New v3']).master("Indicators");
 GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
