@@ -2672,9 +2672,10 @@ function customThirdperson(){
 Global.RegisterCallback("CreateMove", "customThirdperson");
 
 var noscope_dist = {
-	"SSG08": 4,
+	"SSG08": 5,
 	"SCAR20": 7,
-	"G3SG1" : 7
+	"G3SG1" : 7,
+	"AWP" : 4
 }
 var stop_attack2 = false;
 function autoscope(){
@@ -2684,7 +2685,7 @@ function autoscope(){
 	}
 	var weapon = getWeaponName();
 	if(GUI.GetValue("Rage", "General", "Adaptive noscope")){
-		if((weapon !== "SSG08" && weapon !== "SCAR20" && weapon !== "G3SG1") || isInAir()) return;
+		if((weapon !== "SSG08" && weapon !== "SCAR20" && weapon !== "G3SG1" && weapon !== "AWP") || isInAir()) return;
 		if(!Ragebot.GetTarget())
 			var noscope_target = closestTarget();
 		else
