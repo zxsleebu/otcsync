@@ -3294,7 +3294,7 @@ function draw_warning(xzy) {
 			damage = Clamp(Math.ceil(damage - 2), 0, 100);
 			if (damage != 0) damage += 3
 			Render.String(x, y + 4.6, 1, damage + "hp", [255, 255, 255, 255], 2)
-		} 
+		}
 		else Render.String(x, y + 4.6, 1, distance + "m", [255, 255, 255, 255], 2)
         Render.FilledCircle(x, y, radius, [color[0], color[1], color[2], alpha && 50])
         if(!oof) Render.Circle(x, y, 18 + Globals.Tickcount() / 7 % 5, [color[0], color[1], color[2], alpha && 50])
@@ -3410,6 +3410,7 @@ function indicators(){
 	(GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding") ? "FREESTANDING" : "DYNAMIC")));
 
 	var font = Render.AddFont("Segoe UI", 7, 600);
+	var fonta = Render.AddFont("Segoe UI", 5, 600);
 	var speed = 14;
 	var margin = 10
 	var x = ScreenSize[0] / 2;
@@ -3450,9 +3451,9 @@ function indicators(){
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_def && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
 		text = (not_def && text == "auto") ? "peek" : text;
-		text = (not_def && type !== 3) ? text.toUpperCase() : text;
-		Render.StringCustom(x, cY + 1, centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], font);
-		Render.StringCustom(x, cY, centered, text, [color[0], color[1], color[2], indicator[4]], font);
+		text = (not_def) ? text.toUpperCase() : text;
+		Render.StringCustom(x, cY + (type === 3 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], type === 3 ? fonta : font);
+		Render.StringCustom(x, cY + (type === 3 ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], type === 3 ? fonta : font);
 		y += (indicator[4] / 255) * margin;
 	}
 }
