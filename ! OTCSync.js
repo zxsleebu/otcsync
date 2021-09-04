@@ -1897,7 +1897,7 @@ GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
-GUI.AddDropdown("Indicators type", ['Default', 'New', 'New v2', 'New v3']).master("Indicators");
+GUI.AddDropdown("Indicators type", ['Default', 'New', 'New v2', 'New v3', 'New v4']).master("Indicators");
 GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
@@ -3424,7 +3424,7 @@ function indicators(){
     fake_yaw = Local.GetFakeYaw();
     delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
 	x = (not_def) ? x + (centered ? 0 : 5) : x;
-	if (not_def && type !== 3) {
+	if (not_def && type !== 3 && type !== 4) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
@@ -3442,15 +3442,23 @@ function indicators(){
 		if (centered)
 		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
 	}
+	else if (type === 4) {
+		var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
+		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, anim], font);
+		Render.StringCustom(x, y, centered, "otcsync", [custom_color[0], custom_color[1], custom_color[2], anim] || [193, 199, 255, anim], font);
+		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
+		if (centered)
+		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
+	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9)/* && !local_buymenu_opened*/;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var marginy = not_def && type !== 3 ? 20 : type === 3 ? 15 : 0;
+		var marginy = not_def && type !== 3 && type !== 4 ? 20 : type === 3 ? 15 : 0;
 		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
-		if (not_def && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
+		if (not_def && type !== 3 && type !== 4 && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
 		text = (not_def && text == "auto") ? "peek" : text;
 		text = (not_def) ? text.toUpperCase() : text;
 		Render.StringCustom(x, cY + (type === 3 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], type === 3 ? fonta : font);
