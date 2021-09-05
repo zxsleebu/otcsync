@@ -1754,7 +1754,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 62
+//Last index is 63
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1897,7 +1897,8 @@ GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
-GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Acidtech (inv check)', 'Killaura.lua', 'Killaura.lua (anim)']).master("Indicators");
+GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
+GUI.AddCheckbox("Inverter check", 62).master("Indicators")
 GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
@@ -3419,38 +3420,36 @@ function indicators(){
 	var fonta = Render.AddFont("Segoe UI", 5, 600);
 	var speed = 14;
 	var margin = 10
+	var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
 	var x = ScreenSize[0] / 2;
 	var y = ScreenSize[1] / 2 + 9 + 10;
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "GUI", "Indicators type");
-	var not_def = (type !== 0);
+	var inv = GUI.GetValue("Visuals", "GUI", "Inverter check")
 	var custom_color = (GUI.GetValue("Visuals", "GUI", "Indicators custom color") ? GUI.GetColor("Visuals", "GUI", "Indicators custom color") : false);
 	real_yaw = Local.GetRealYaw();
 	fake_yaw = Local.GetFakeYaw();
 	delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
-	x = (not_def) ? x + (centered ? 0 : 5) : x;
-	if (not_def && type !== 3 && type !== 4) {
-		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font);
+	x = (type === 1) ? x + (centered ? 0 : 5) : x;
+	if (type === 1) {
+		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
+		if(inv){
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
+		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
+		} else {
+		Render.StringCustom(x, y, centered, "OTCSYNC", [custom_color[0], custom_color[1], custom_color[2], anim] || [193, 199, 255, 255], font)
+		}
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
 	}
-	if (type === 1) Render.StringCustom(x, y, centered, "OTCSYNC", custom_color || [193, 199, 255, 255], font)
 	else if (type === 2) {
-		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
-		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
-	} 
-	else if (type === 3 ) {
-		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, 255], font);
+		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, inv ? 255 : anim], font);
+		if(inv){
 		Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
 		Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
-		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
-		if (centered)
-		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
-	}
-	else if (type === 4) {
-		var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
-		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, anim], font);
+		} else {
 		Render.StringCustom(x, y, centered, "otcsync", [custom_color[0], custom_color[1], custom_color[2], anim] || [193, 199, 255, anim], font);
+		}
 		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
 		if (centered)
 		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
@@ -3459,15 +3458,15 @@ function indicators(){
 		var indicator = indicators_paths[indicator_path];
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9)/* && !local_buymenu_opened*/;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var marginy = not_def && type !== 3 && type !== 4 ? 20 : type === 3 || type === 4 ? 15 : 0;
+		var marginy = type === 1 ? 20 : type === 2 ? 15 : 0;
 		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
-		if (not_def && type !== 3 && type !== 4 && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
-		text = (not_def && text == "auto") ? "peek" : text;
-		text = (not_def) ? text.toUpperCase() : text;
-		Render.StringCustom(x, cY + (type === 3 || type === 4 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], type === 3 || type === 4 ? fonta : font);
-		Render.StringCustom(x, cY + (type === 3 || type === 4 ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], type === 3 || type === 4 ? fonta : font);
+		if (type === 1 && type !== 2 && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
+		text = (type !== 0 && text == "auto") ? "peek" : text;
+		text = (type !== 0) ? text.toUpperCase() : text;
+		Render.StringCustom(x, cY + (type === 2 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], type === 2 ? fonta : font);
+		Render.StringCustom(x, cY + (type === 2 ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], type === 2 ? fonta : font);
 		y += (indicator[4] / 255) * margin;
 	}
 }
