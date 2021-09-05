@@ -1754,7 +1754,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 63
+//Last index is 66
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1827,7 +1827,7 @@ GUI.AddCheckbox("Legbreaker", 12);
 GUI.AddDropdown("Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
 GUI.AddCheckbox("Auto invert", 49);
 GUI.AddCheckbox("Adaptive jitter", 58);
-GUI.AddCheckbox("No desync on DT", 61);
+GUI.AddCheckbox("No desync on DT", 62);
 GUI.AddSlider("Legbreaker speed", 1, 5, 2).master("Legbreaker");
 
 GUI.AddSubtab("AA Presets");
@@ -1897,10 +1897,10 @@ GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Inverter check", 62).master("Indicators").flags(GUI.SAME_LINE)
+GUI.AddCheckbox("Inverter check", 64).master("Indicators").flags(GUI.SAME_LINE)
 GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
-GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
-GUI.AddSlider("Add y for indicators", 0, 75, 63).master("Indicators")
+GUI.AddCheckbox("Indicators custom color", 63).master("Indicators").additional("color");
+GUI.AddSlider("Add y for indicators", 0, 75, 65).master("Indicators")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hit logs", 35).additional("color");
