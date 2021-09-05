@@ -1807,8 +1807,8 @@ GUI.AddSubtab("Doubletap");
 //GUI.AddCheckbox("Rage", "Doubletap", "Better DT (addon only)", 51);
 GUI.AddCheckbox("Recharge speed", 9);
 GUI.AddSlider("Recharge ticks", 0, 16, 10).master("Recharge speed");
-GUI.AddCheckbox("Lag peek (pizdec)", 54);
-GUI.AddSlider("Extrapolate ticks", 0, 16, 3).master("Lag peek (pizdec)");
+GUI.AddDropdown("DT Boost", ["None", "Speed boost", "Lag peek (pizdec)"]);
+GUI.AddSlider("Extrapolate ticks", 0, 16, 3);
 
 GUI.AddSubtab("Other");
 GUI.AddHotkey("Extended backtracking", "hold");
@@ -2024,6 +2024,7 @@ var csgo_weapons = {
 	"262208": "Revolver"
 };
 function getWeaponName(){
+	if(!local) return "none";
 	var weapon = Entity.GetProp(Entity.GetWeapon(local), "DT_WeaponBaseItem", "m_iItemDefinitionIndex");
 	return csgo_weapons[weapon];
 }
@@ -2235,7 +2236,11 @@ var russianToEng = {
 	"1080": "u",
 	"1081": "u",
 	"1073": "6",
-	"1041": "6"
+	"1041": "6",
+	"1053": "H",
+	"1085": "H",
+	"1068": "b",
+	"1075": "r",
 }
 function rusToEng(str){
 	var rus = "";
@@ -2813,7 +2818,7 @@ var preset3_yaw = -18;
 var preset3_dsy = -30;
 function aaPresets() {
 	var preset = GUI.GetValue("Anti-Aim", "AA Presets", "Preset");
-	if (!preset || lowdelta_active || legit_aa_active) return;
+	if (!preset || lowdelta_active || legit_aa_active || (GUI.GetValue("Anti-Aim", "General", "No desync on DT") && exploitsActive("dt"))) return;
 	AntiAim.SetOverride(1);
 	if(preset === 1){
 		AntiAim.SetOverride(1);
@@ -3421,8 +3426,8 @@ function indicators(){
 	var not_def = (type !== 0);
 	var custom_color = (GUI.GetValue("Visuals", "GUI", "Indicators custom color") ? GUI.GetColor("Visuals", "GUI", "Indicators custom color") : false);
 	real_yaw = Local.GetRealYaw();
-    fake_yaw = Local.GetFakeYaw();
-    delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
+	fake_yaw = Local.GetFakeYaw();
+	delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
 	x = (not_def) ? x + (centered ? 0 : 5) : x;
 	if (not_def && type !== 3 && type !== 4) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, 255], font);
@@ -3466,6 +3471,7 @@ function indicators(){
 		y += (indicator[4] / 255) * margin;
 	}
 }
+
 
 Global.RegisterCallback("Draw", "indicators");
 
@@ -3570,7 +3576,8 @@ var keybinds_paths = [
 	["Freestanding",		["Anti-Aim", "General", "Freestanding"],				true,											GUI.IsHotkeyActive,		0],
 	["Auto peek",			["Misc", "General", "Auto peek"],						null,											UI.IsHotkeyActive,		0],
 	["Thirdperson", 		["Visual", "World", "View", "Thirdperson"], 			["Misc", "Keybinds fixer", "Thirdperson"],		UI.IsHotkeyActive,		0],
-	["Inverter", 			["Anti-Aim", "Fake angles", "Inverter"], 				["Misc", "Keybinds fixer", "Inverter"],			UI.IsHotkeyActive,		0]
+	["Inverter", 			["Anti-Aim", "Fake angles", "Inverter"], 				["Misc", "Keybinds fixer", "Inverter"],			UI.IsHotkeyActive,		0],
+	["Resolver override", 	["Rage", "GENERAL", "General", "Resolver override"],	null,											UI.IsHotkeyActive,		0],
 ];
 function keybindList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
@@ -3593,9 +3600,6 @@ function keybindList(){
 		if ((keybind[4] = Clamp(keybind[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var bind_y = binds_y - margin + Math.floor((keybind[4] / 255) * margin);
 		var text_size = Render.TextSizeCustom(mode, font);
-		//Unused shadows
-		//Render.StringCustom(keybind_list_x + 3, bind_y + 1, 0, keybind[0], [0, 0, 0, Math.floor(keybind[4] / 1.5)], font);
-		//Render.StringCustom(keybind_list_x + keybind_list_width - text_size[0] - 1, bind_y + 1, 0, mode, [0, 0, 0, Math.floor(keybind[4] / 1.5)], font);
 		
 		Render.StringCustom(keybind_list_x + 3, bind_y, 0, keybind[0], GUI.Colors.GetColor([255, 255, 255], keybind[4]), font);
 		Render.StringCustom(keybind_list_x + keybind_list_width - text_size[0] - 1, bind_y, 0, mode, GUI.Colors.GetColor([255, 255, 255], keybind[4]), font);
@@ -3868,7 +3872,7 @@ Global.RegisterCallback("CreateMove", "clantag");
 var defensive_pos = [];
 var defensiveDTClantagState = false;
 function defensiveDT(){
-	if((!GUI.GetValue("Rage", "Doubletap", "Lag peek (pizdec)") || !exploitsActive("dt")) || isAutopeeking()) return;
+	if((GUI.GetValue("Rage", "Doubletap", "DT Boost") !== 2 || !exploitsActive("dt")) || isAutopeeking()) return;
 	var enemies = Entity.GetEnemies();
 	var ticks = GUI.GetValue("Rage", "Doubletap", "Extrapolate ticks");
 	var pos = Entity.GetHitboxPosition(local, 0);
@@ -3916,7 +3920,9 @@ function defensiveDT(){
 Global.RegisterCallback("CreateMove", "defensiveDT");
 
 function drawDefensive(){
-	if(!GUI.GetValue("Rage", "Doubletap", "Lag peek (pizdec)")) return;
+	var enabled = GUI.GetValue("Rage", "Doubletap", "DT Boost") === 2;
+	GUI._MenuElements["Rage"]["Doubletap"]["Extrapolate ticksRD"].Flags = GUI.NOT_VISIBLE * +!enabled;
+	if(!enabled) return;
 	if(defensive_pos.length > 64) defensive_pos.shift();
 	var size = 6;
 	for(pos in defensive_pos){
@@ -3932,7 +3938,7 @@ var restore_viewangles = false;
 function restore_shot() {
     if(predict_shot){
         Cheat.ExecuteCommand("-attack");
-		Local.SetViewAngles(viewangles_bak);
+		//Local.SetViewAngles(viewangles_bak);
         predict_shot = false;
     }
 }
@@ -3943,7 +3949,7 @@ var last_leg_pos = [0, 0, 0];
 var viewangles_bak = Local.GetViewAngles();
 function legPrediction(){
 	var shoot = true;
-	if(!GUI.GetValue("Rage", "General", "Leg prediction")) return;
+	if(!GUI.GetValue("Rage", "General", "Leg prediction") || !local) return;
 
 	var innacuracy = Local.GetInaccuracy() * 100;
 	innacuracy *= Local.GetSpread() * 450;
@@ -4017,14 +4023,15 @@ Global.RegisterCallback("Draw", "knifeChanger");
 function adaptiveJitter(){
 	if(!GUI.GetValue("Anti-Aim", "General", "Adaptive jitter")) return;
 	if (!isAlive) return;
-	var min = 15;
-	var max = 45;
 	var f = UI.GetValue("Anti-Aim", "Fake angles", "Enabled") || AntiAim.GetOverride();
+	var min = 15;
+	var max = (f ? 45 : 60);
 	var v = getVelocity(local);
 	var t = (Math.ceil(Globals.Tickcount() / 3) % 2);
-	var a = Clamp(Math.ceil(v / (f ? 8 : 5)), min, max);
-	if(isSlowwalking()) a = Clamp(a + 10, min, max);
-	if (isInAir() || Input.IsKeyPressed(0x20)) a = Clamp(a + 10, min, max - 15);
+	var a = Clamp(Math.ceil(v / (f ? 8 : 4)), min, max);
+	var d = (f ? 10 : 30);
+	if(isSlowwalking()) a = Clamp(a + d, min, max);
+	if (isInAir() || Input.IsKeyPressed(0x20)) a = Clamp(a + d, min, max - (f ? 15 : 10));
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset", t ? a : -a);
 }
 Global.RegisterCallback("CreateMove", "adaptiveJitter");
@@ -4036,7 +4043,7 @@ function viewEnemyChat(){
 
     var text = Event.GetString("text");
     var team = Entity.GetProp(user_id, "CBaseEntity", "m_iTeamNum");
-    var name = Entity.GetName(user_id);
+    var name = rusToEng(Entity.GetName(user_id));
     var alive = Entity.IsAlive(user_id) ? " " : " *DEAD* ";
     var string;
 
@@ -4097,13 +4104,22 @@ function resetVars(){
 }
 Global.RegisterCallback("player_connect_full", "resetVars");
 
-//Callbacks
-var Draw = GUI.Draw;
-var CreateMove = GUI.CreateMove;
+function defensiveDTAfterShot(){
+	if(GUI.GetValue("Rage", "Doubletap", "DT Boost") !== 1 || !local || !exploitsActive("dt") ||Entity.GetEntityFromUserID(Event.GetInt("userid")) != local) return;
+	if(defensiveDTClantagState){
+		Local.SetClanTag("!|!|!|!|!|!|!|!");
+		defensiveDTClantagState = false;
+	}
+	else{
+		Local.SetClanTag("|!|!|!|!|!|!|!|");
+		defensiveDTClantagState = true;
+	}
+}
+Cheat.RegisterCallback("weapon_fire", "defensiveDTAfterShot");
 
 //Clean up
 Duktape.gc();
 
 //Callbacks
-Global.RegisterCallback("Draw", "Draw");
-Global.RegisterCallback("CreateMove", "CreateMove");
+Global.RegisterCallback("Draw", "GUI.Draw");
+Global.RegisterCallback("CreateMove", "GUI.CreateMove");
