@@ -1900,6 +1900,7 @@ GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME
 GUI.AddCheckbox("Inverter check", 62).master("Indicators").flags(GUI.SAME_LINE)
 GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
 GUI.AddCheckbox("Indicators custom color", 61).master("Indicators").additional("color");
+GUI.AddSlider("Add y for indicators", 0, 75, 63).master("Indicators")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hit logs", 35).additional("color");
@@ -3422,22 +3423,25 @@ function indicators(){
 	var margin = 10
 	var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
 	var x = ScreenSize[0] / 2;
-	var y = ScreenSize[1] / 2 + 9 + 10;
+	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "GUI", "Add y for indicators");
 	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "GUI", "Indicators type");
 	var inv = GUI.GetValue("Visuals", "GUI", "Inverter check")
 	var custom_color = (GUI.GetValue("Visuals", "GUI", "Indicators custom color") ? GUI.GetColor("Visuals", "GUI", "Indicators custom color") : false);
+	var def = [custom_color[0] || 193, custom_color[1] || 199, custom_color[2] || 255, anim]
 	real_yaw = Local.GetRealYaw();
 	fake_yaw = Local.GetFakeYaw();
 	delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
+	c1 = (custom_color || [193, 199, 255, 255])
+	c2 = [255, 255, 255, 255]
 	x = (type === 1) ? x + (centered ? 0 : 5) : x;
 	if (type === 1) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? c1 : c2), font);
 		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
 		} else {
-		Render.StringCustom(x, y, centered, "OTCSYNC", [custom_color[0], custom_color[1], custom_color[2], anim] || [193, 199, 255, 255], font)
+		Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
 		}
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
@@ -3445,10 +3449,10 @@ function indicators(){
 	else if (type === 2) {
 		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-		Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? (c1 = (custom_color || [193, 199, 255, 255])) : (c2 = [255, 255, 255, 255])), font);
+		Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? c1 : c2), font);
 		Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
 		} else {
-		Render.StringCustom(x, y, centered, "otcsync", [custom_color[0], custom_color[1], custom_color[2], anim] || [193, 199, 255, anim], font);
+		Render.StringCustom(x, y, centered, "otcsync", def, font);
 		}
 		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
 		if (centered)
