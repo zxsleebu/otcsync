@@ -1841,7 +1841,6 @@ GUI.AddCheckbox("Slowwalk jitter", 15).master("Custom slowwalk");
 GUI.AddSubtab("Fake Lag");
 GUI.AddCheckbox("Static legs", 47);
 GUI.AddCheckbox("Slide break mode", 59).master("Static legs").flags(GUI.SAME_LINE);
-GUI.AddCheckbox
 GUI.AddSlider("Fake lag choke", 8, 15, 14).master("Static legs");
 GUI.AddCheckbox("No fake lag on revolver", 17);
 GUI.AddCheckbox("No fake lag on nades", 18);
@@ -1902,7 +1901,9 @@ GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("
 GUI.AddCheckbox("Indicators custom color", 63).master("Indicators").additional("color");
 GUI.AddSlider("Add y for indicators", 0, 75, 65).master("Indicators")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
+GUI.AddDropdown("k. Style", ['default', 'skeet']).flags(GUI.SAME_LINE).master("Keybind list");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
+GUI.AddDropdown("w. Style", ['default', 'skeet']).flags(GUI.SAME_LINE).master("Spectator list");
 GUI.AddCheckbox("Hit logs", 35).additional("color");
 GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']);
 GUI.AddColor("Menu accent");
@@ -3585,11 +3586,12 @@ var keybinds_paths = [
 function keybindList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
 	var icon = Render.AddFont("OnetapFont", 13, 100);
+	var sty = GUI.GetValue("Visuals", "GUI", "k. Style")
 	var visible = false;
 	var speed = 14;
 	var margin = 15;
 	var binds_y = keybind_list_y + keybind_list_height + 1;
-	var font = Render.AddFont("Segoe UI Semilight", 9, 200);
+	var font = sty ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	if(World.GetServerString() && isAlive)
 	for (keybind_path in keybinds_paths) {
 		var keybind = keybinds_paths[keybind_path];
@@ -3612,12 +3614,14 @@ function keybindList(){
 	keybind_list_alpha = Clamp(keybind_list_alpha += speed * (visible && 1 || -1), 0, 255);
 	if (keybind_list_alpha == 0) return;
 	var background = [0, 0, 0, keybind_list_alpha / 2];
+	var x = sty ? 65 : 25
+	var y = sty ? 22 : 2
 	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Keybind list"), keybind_list_alpha);
 	Render.FilledRect(keybind_list_x + 1, keybind_list_y, keybind_list_width - 2, 1, background);
 	Render.FilledRect(keybind_list_x, keybind_list_y + 1, keybind_list_width, keybind_list_height - 3, background);
 	Render.StringCustom(keybind_list_x + 6, keybind_list_y, 0, "H", color, icon);
-	Render.StringCustom(keybind_list_x + 25, keybind_list_y + 1, 0, "keybinds", [255, 255, 255, keybind_list_alpha], font);
-	Render.FilledRect(keybind_list_x, keybind_list_y + keybind_list_height - 2, 180, 2, color);
+	Render.StringCustom(keybind_list_x + x, keybind_list_y + 1, 0, "keybinds", [255, 255, 255, keybind_list_alpha], font);
+	Render.FilledRect(keybind_list_x, keybind_list_y + keybind_list_height - y, 180, 2, color);
 }
 
 Global.RegisterCallback("Draw", "keybindList");
@@ -3673,8 +3677,9 @@ function spectatorList(){
 	var speed = 14;
 	var margin = 15;
 	var specs_y = spectator_list_y + 21;
-	var font = Render.AddFont("Segoe UI Semilight", 9, 200);
 	var players = Entity.GetPlayers();
+	var sty = GUI.GetValue("Visuals", "GUI", "w. Style")
+	var font = sty ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	if(World.GetServerString())
 	for (player in players) {
 		var player = players[player];
@@ -3697,11 +3702,13 @@ function spectatorList(){
 	if (spectator_list_alpha == 0) return;
 	var background = [0, 0, 0, spectator_list_alpha / 2];
 	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Spectator list"), spectator_list_alpha);
+	var x = sty ? 64 : 24
+	var y = sty ? 22 : 2
 	Render.FilledRect(spectator_list_x + 1, spectator_list_y, spectator_list_width - 2, 1, background);
 	Render.FilledRect(spectator_list_x, spectator_list_y + 1, spectator_list_width, spectator_list_height - 3, background);
 	Render.String(spectator_list_x + 2, spectator_list_y + 2, 0, "%", color, 6);
-	Render.StringCustom(spectator_list_x + 24, spectator_list_y, 0, "spectators", [255, 255, 255, spectator_list_alpha], font);
-	Render.FilledRect(spectator_list_x, spectator_list_y + spectator_list_height - 2, 180, 2, color);
+	Render.StringCustom(spectator_list_x + x, spectator_list_y, 0, "spectators", [255, 255, 255, spectator_list_alpha], font);
+	Render.FilledRect(spectator_list_x, spectator_list_y + spectator_list_height - y, 180, 2, color);
 
 	//Reset invalid players
 	if(World.GetServerString())
