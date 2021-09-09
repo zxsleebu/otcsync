@@ -2693,10 +2693,10 @@ function autoscope(){
 	var weapon = getWeaponName();
 	if(GUI.GetValue("Rage", "General", "Adaptive noscope")){
 		if((weapon !== "SSG08" && weapon !== "SCAR20" && weapon !== "G3SG1" && weapon !== "AWP") || isInAir()) return;
-		if(!Ragebot.GetTarget())
+		if(!ragebot_target)
 			var noscope_target = closestTarget();
 		else
-			var noscope_target = Ragebot.GetTarget();
+			var noscope_target = ragebot_target;
 		if(!Entity.IsAlive(noscope_target)){
 			UI.SetValue("Rage", "GENERAL", "General", "Auto scope", 1);
 			return;
@@ -2744,12 +2744,14 @@ function autoscope(){
 Global.RegisterCallback("CreateMove", "autoscope");
 
 function doubletap(){
-	if(!isAlive) return;
+	if(!isAlive || ragebot_target) return;
 	if (!GUI.GetValue("Rage", "Doubletap", "Recharge speed") || getWeaponName() === "Revolver") return Exploit.EnableRecharge();
+	//var enemies = Entity.GetEnemies();
+
+	//Don't recharge if enemy is visible
+	//for (enemy in enemies) if(Trace.Bullet(local, enemies[enemy], Entity.GetHitboxPosition(local, 0), Entity.GetHitboxPosition(enemies[enemy], 4))[1] > 0) return Exploit.DisableRecharge();
 	var charge = Exploit.GetCharge();
-	/*if (GUI.GetValue("Rage", "Doubletap", "Better DT (addon only)")){
-		Convar.SetString("cl_windspeed", "11" + (+((exploitsActive("dt") || (exploitsActive("dt") && exploitsActive("hs"))) && Exploit.GetCharge() === 1)));
-	}*/
+
 	(charge != 1) ? Exploit.EnableRecharge() : Exploit.DisableRecharge();
 	if (can_shift_shot(GUI.GetValue("Rage", "Doubletap", "Recharge ticks")) && charge != 1) {
 		Exploit.DisableRecharge();
@@ -2798,18 +2800,24 @@ Global.RegisterCallback("Draw", "autopeek");
 
 function staticLegs(){
 	if(!isAlive) return;
-	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") || Input.IsKeyPressed(0x20) || isInAir() || exploitsActive("all")) return;
+	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") || Input.IsKeyPressed(0x20) || isInAir()) return;
 	var fakelag = GUI.GetValue("Anti-Aim", "Fake Lag", "Fake lag choke");
 	UI.SetValue("Anti-Aim", "Fake-Lag", "Jitter", 0);
-	//if () fakelag = 6;
+	/*var exploits = exploitsActive("all");
+	var mov = [0, 0, 0];
+	if(exploits){
+		fakelag = 2;
+		var cur = UserCMD.GetMovement();
+		mov = [cur[0] / 7, cur[1] / 7, cur[2]];
+	}*/
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
-			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag)
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1 * +!GUI.GetValue("Anti-Aim", "Fake Lag", "Slide break mode"));
+			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag);
+			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", (1 * +!GUI.GetValue("Anti-Aim", "Fake Lag", "Slide break mode")));
 			break;
 		case fakelag - 1:
-			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", 0)
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1)
+			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", 0);
+			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1);
 			UserCMD.SetMovement([0, 0, 0]);
 			break;
 	}
