@@ -333,7 +333,7 @@ GUI.DrawHeader = function(){
 
 	var Username = Cheat.GetUsername();
 	var Username = rusToEng(Username.charAt(0).toUpperCase() + Username.slice(1));
-	if(!mustDisplayString(Username, GUI.Fonts.Username, GUI.Scale(11))) return;
+	//if(!mustDisplayString(Username, GUI.Fonts.Username, GUI.Scale(11))) return;
 	var UsernameTextSize = Render.TextSizeCustom(Username, GUI.Fonts.Username);
 	var UsernameX = GUI.X + GUI.Scale(GUI.Width) - 6 - UsernameTextSize[0];
 	var UsernameColor = GUI.Colors.AnimateBackground(GUI.Colors.Username);
@@ -427,7 +427,7 @@ GUI.DrawElements = function(){
 		var ElementX = GUI.X + GUI.SubtabListWidthScaled + 16;
 		if(Element.Flags & GUI.SAME_LINE){
 			ElementX = GUI.X + ((GUI.Scale(GUI.Width) + GUI.SubtabListWidthScaled) / 2);
-			ElementOffsetY -= GUI.Scale(GUI._ElementOffsets[CurrentSubtab[ElementIds[i - 1]].Type]);
+			ElementOffsetY -= GUI.Scale(GUI._ElementOffsets[Element.Type]); //CurrentSubtab[ElementIds[i - 1]].Type
 		}
 		var ElementY = GUI.Y + TopOffset + ElementOffsetY + Easing(0, 30, 1 - GUI._MenuAnimation[4], 1);
 		GUI.RenderElement(Element, ElementX, ElementY, ElementId);
@@ -954,7 +954,7 @@ GUI.DrawColorMenu = function(){
 	}
 }
 GUI.DrawDropdown = function (x, y, name, id){
-	var ElementsWidths = [100];
+	var ElementsWidths = [GUI.Scale(100)];
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
 	var DropdownElements = Element.Elements;
 	var DropdownHeight = GUI.Scale(26);
@@ -970,7 +970,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 	var DropdownBorderColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, DropdownBorderColor, Animation, GUI._MenuAnimation[1] * 255);
 	var DropdownTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var DropdownY = y + GUI.Scale(32);
-	Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
+	if (!(Element.Flags & GUI.SAME_LINE)) Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
 	Render.SmoothRect(x, DropdownY, DropdownWidth, DropdownHeight, DropdownBorderColorAnimated);
 	Render.SmoothRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, DropdownColorAnimated);
 	Render.StringCustom(x + 5, DropdownY + 2, 0, DropdownElements[Element.Value], DropdownTextColor, GUI.Fonts.Menu);
@@ -1408,15 +1408,10 @@ GUI.SetValue = function(tab, subtab, name, value, setnotdef){
 	}
 }
 GUI.GetValue = function(tab, subtab, name, cache){
-	if(cache === null || (typeof cache) === "undefined"){
-		var cache = true;
-	}
+	if(cache === null || (typeof cache) === "undefined") var cache = false;
 	var Id = name + tab[0] + subtab[0];
 	var Element = GUI._MenuElements[tab][subtab][Id];
-	if(typeof Element === "undefined"){
-		Cheat.Print("Cannot find element [" + tab + ", " + subtab + ", " + name + "]\n");
-		return;
-	}
+	if(typeof Element === "undefined") return Cheat.Print("Cannot find element [" + tab + ", " + subtab + ", " + name + "]\n");
 	switch(Element.Type){
 		case "checkbox": {
 			if(cache){
@@ -2595,11 +2590,7 @@ function safePoints(enemy){
 function safeAWP(){
 	if(!isAlive) return;
 	if(!GUI.GetValue("Rage", "Safe points", "Safe points on AWP")) return;
-	if(getWeaponName() === "AWP"){
-		for(i = 0; i <= 12; i++){
-			Ragebot.ForceHitboxSafety(i);
-		}
-	}
+	if(getWeaponName() === "AWP") for(i = 0; i <= 12; i++) Ragebot.ForceHitboxSafety(i);
 }
 
 Global.RegisterCallback("CreateMove", "safeAWP");
@@ -2637,18 +2628,10 @@ function slowwalk(){
 	if(slowwalk_jitter) slowwalk_speed += 10;
 	var speed = (slowwalk_speed * (((getVelocity(local) >= slowwalk_speed) && slowwalk_jitter) ? -1 : 1));
 	var dir = [0, 0, 0];
-	if(Input.IsKeyPressed(0x57)){
-		dir[0] += speed;
-	}
-	if(Input.IsKeyPressed(0x44)){
-		dir[1] += speed;
-	}
-	if(Input.IsKeyPressed(0x41)){
-		dir[1] -= speed
-	}
-	if(Input.IsKeyPressed(0x53)){
-		dir[0] -= speed;
-	}
+	if(Input.IsKeyPressed(0x57)) dir[0] += speed;
+	if(Input.IsKeyPressed(0x44)) dir[1] += speed;
+	if(Input.IsKeyPressed(0x41)) dir[1] -= speed
+	if(Input.IsKeyPressed(0x53)) dir[0] -= speed;
 	UserCMD.SetMovement(dir);
 }
 
@@ -2801,7 +2784,7 @@ Global.RegisterCallback("Draw", "autopeek");
 
 function staticLegs(){
 	if(!isAlive) return;
-	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") || Input.IsKeyPressed(0x20) || isInAir()) return;
+	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") || Input.IsKeyPressed(0x20) || isInAir() || exploitsActive("all")) return;
 	var fakelag = GUI.GetValue("Anti-Aim", "Fake Lag", "Fake lag choke");
 	UI.SetValue("Anti-Aim", "Fake-Lag", "Jitter", 0);
 	/*var exploits = exploitsActive("all");
@@ -3130,7 +3113,7 @@ function grenade_warning_tick() {
 					[[x - 2, z - 2, y - 2], [x + mx - 2, z + mz - 2, y + my - 2]],
 					[[x - 2, z - 2, y + 2], [x + mx - 2, z + mz - 2, y + my + 2]],
 					[[x + 2, z + 2, y - 2], [x + mx + 2, z + mz + 2, y + my - 2]],
-					[[x + 2, z + 2, y + 2],[x + mx + 2, z + mz + 2, y + my + 2]]
+					[[x + 2, z + 2, y + 2], [x + mx + 2, z + mz + 2, y + my + 2]]
 				];
 				for (var v = 0; v < hitbox.length; v++) {
 					var h = hitbox[v]
@@ -3216,7 +3199,8 @@ function grenade_warning_tick() {
 							hittable = true
 							hit = [x + mx * (res), z + mz * (res), y + my * (res)]
 							break;
-						} else {
+						}
+						else {
 							if (vres1 != 1) {
 								pmolotov.push([[x, z, y], Globals.Tickcount(), Globals.Tickcount() + i, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')])
 								hits.push([[x, z, y], Globals.Tickcount() + i, true, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')])
@@ -3230,15 +3214,10 @@ function grenade_warning_tick() {
 					}
 				}
 				if (hit.length > 1) {
-					hits.push([
-						[hit[0], hit[1], hit[2]], Globals.Tickcount() + i, true, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime'), Globals.Tickcount()
-					])
+					hits.push([[hit[0], hit[1], hit[2]], Globals.Tickcount() + i, true, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime'), Globals.Tickcount()])
 					break;
 				}
-				lines.push([
-					[x, z, y],
-					[x + mx, z + mz, y + my], Globals.Tickcount() + i, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')
-				])
+				lines.push([[x, z, y], [x + mx, z + mz, y + my], Globals.Tickcount() + i, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')])
 				x = x + mx
 				y = y + my
 				z = z + mz
@@ -3320,9 +3299,7 @@ function draw_warning(xzy) {
 	}
 	var str = xzy[2] ? "K" : "I";
 	var alpha = (xzy[1] - Globals.Tickcount()) * 2
-	if (alpha < 1)
-		return;
-
+	if (alpha < 1) return;
 
 	if (x < 0 || x > ScreenSize[0] || y > ScreenSize[1] || y < 0) {
 		var yaw = (Local.GetViewAngles()[1])
@@ -3337,9 +3314,8 @@ function draw_warning(xzy) {
 		var cos = Math.cos(atan) * -1
 		var sin = Math.sin(atan)
 		draw_ind(ScreenSize[0] / 2 + cos * 150, ScreenSize[1] / 2 + sin * 150, str, true, xzy[0])
-	} else {
-		draw_ind(x, y, str, false, xzy[0])
 	}
+	else draw_ind(x, y, str, false, xzy[0]);
 }
 
 function nade_draw() {
@@ -3370,8 +3346,7 @@ function nade_draw() {
 		var max = end_timer - start_timer
 		var cur = end_timer - curr
 		var proc = cur / max * 300
-		if (proc > 0)
-			draw_circle_3d(xzy[0], xzy[1], xzy[2], 130, 360, proc, 30, [color[0], color[1], color[2], 200], true, [color[0], color[1], color[2], 50])
+		if (proc > 0) draw_circle_3d(xzy[0], xzy[1], xzy[2], 130, 360, proc, 30, [color[0], color[1], color[2], 200], true, [color[0], color[1], color[2], 50]);
 	}
 }
 
@@ -3561,14 +3536,28 @@ function keybindFixer() {
 
 Global.RegisterCallback("Draw", "keybindFixer");
 
+var info_window_width = 180;
+var info_window_height = 19;
+function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
+	var iconfont = Render.AddFont("OnetapFont", 13, 100);
+	if (alpha == 0) return;
+	var background = [0, 0, 0, alpha / 2];
+	var colored_line_y = style ? 20 : 2;
+	var title_y = style ? 1 : 0;
+	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Keybind list"), keybind_list_alpha);
+	if(!style) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
+	Render.FilledRect(x, y + 1, info_window_width, info_window_height - 3, background);
+	Render.StringCustom(x + (style ? info_window_width / 2 : 25), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, keybind_list_alpha], font);
+	Render.FilledRect(x, y + info_window_height - colored_line_y, 180, 2, color);
+	if (icon !== null) Render.StringCustom(x + 6, y, 0, icon, color, iconfont);
+}
+
 var keybind_list_alpha = 0;
-var keybind_list_width = 180;
-var keybind_list_height = 19;
-UI.AddSliderInt("keybind_list_x", 0, ScreenSize[0] - keybind_list_width);
+UI.AddSliderInt("keybind_list_x", 0, ScreenSize[0] - info_window_width);
 UI.AddSliderInt("keybind_list_y", 0, ScreenSize[1]);
 UI.SetEnabled("keybind_list_x", 0);
 UI.SetEnabled("keybind_list_y", 0);
-var keybind_list_x = GetVal("keybind_list_x") || ScreenSize[0] - keybind_list_width - 1;
+var keybind_list_x = GetVal("keybind_list_x") || ScreenSize[0] - info_window_width - 1;
 var keybind_list_y = GetVal("keybind_list_y") || 200;
 var keybind_list_is_moving = false;
 var keybind_list_old_cursor = [0, 0];
@@ -3593,13 +3582,12 @@ var keybinds_paths = [
 ];
 function keybindList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
-	var icon = Render.AddFont("OnetapFont", 13, 100);
-	var sty = GUI.GetValue("Visuals", "GUI", "k. Style")
+	var style = GUI.GetValue("Visuals", "GUI", "k. Style");
 	var visible = false;
 	var speed = 14;
 	var margin = 15;
-	var binds_y = keybind_list_y + keybind_list_height + 1;
-	var font = sty ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	var binds_y = keybind_list_y + info_window_height + 1;
+	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	if(World.GetServerString() && isAlive)
 	for (keybind_path in keybinds_paths) {
 		var keybind = keybinds_paths[keybind_path];
@@ -3615,21 +3603,14 @@ function keybindList(){
 		var text_size = Render.TextSizeCustom(mode, font);
 		
 		Render.StringCustom(keybind_list_x + 3, bind_y, 0, keybind[0], GUI.Colors.GetColor([255, 255, 255], keybind[4]), font);
-		Render.StringCustom(keybind_list_x + keybind_list_width - text_size[0] - 1, bind_y, 0, mode, GUI.Colors.GetColor([255, 255, 255], keybind[4]), font);
+		Render.StringCustom(keybind_list_x + info_window_width - text_size[0] - 1, bind_y, 0, mode, GUI.Colors.GetColor([255, 255, 255], keybind[4]), font);
 		binds_y += (keybind[4] / 255) * margin;
 	}
 	visible = visible || UI.IsMenuOpen();
 	keybind_list_alpha = Clamp(keybind_list_alpha += speed * (visible && 1 || -1), 0, 255);
-	if (keybind_list_alpha == 0) return;
-	var background = [0, 0, 0, keybind_list_alpha / 2];
-	var x = sty ? 65 : 25
-	var y = sty ? 22 : 2
+	
 	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Keybind list"), keybind_list_alpha);
-	Render.FilledRect(keybind_list_x + 1, keybind_list_y, keybind_list_width - 2, 1, background);
-	Render.FilledRect(keybind_list_x, keybind_list_y + 1, keybind_list_width, keybind_list_height - 3, background);
-	Render.StringCustom(keybind_list_x + 6, keybind_list_y, 0, "H", color, icon);
-	Render.StringCustom(keybind_list_x + x, keybind_list_y + 1, 0, "keybinds", [255, 255, 255, keybind_list_alpha], font);
-	Render.FilledRect(keybind_list_x, keybind_list_y + keybind_list_height - y, 180, 2, color);
+	drawInfoWindow(keybind_list_x, keybind_list_y, "keybinds", "H", keybind_list_alpha, color, font, style);
 }
 
 Global.RegisterCallback("Draw", "keybindList");
@@ -3639,17 +3620,17 @@ function keybindListDrag(){
 	if (GUI._MenuIsMoving) return;
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
 	var cursor_pos = Input.GetCursorPosition();
-	keybind_list_x = Clamp(keybind_list_x, 1, ScreenSize[0] - keybind_list_width);
-	keybind_list_y = Clamp(keybind_list_y, 1, ScreenSize[1] - keybind_list_height);
+	keybind_list_x = Clamp(keybind_list_x, 1, ScreenSize[0] - info_window_width);
+	keybind_list_y = Clamp(keybind_list_y, 1, ScreenSize[1] - info_window_height);
 	if (!Input.IsKeyPressed(0x01)) {
 		keybind_list_is_moving = false;
 		keybind_list_old_cursor = cursor_pos;
 		return;
 	}
-	if (UI.IsCursorInBox(keybind_list_x, keybind_list_y, keybind_list_width, keybind_list_height) || keybind_list_is_moving) {
+	if (UI.IsCursorInBox(keybind_list_x, keybind_list_y, info_window_width, info_window_height) || keybind_list_is_moving) {
 		keybind_list_is_moving = true;
-		keybind_list_x = Clamp(cursor_pos[0] - keybind_list_old_cursor[0] + keybind_list_x, 1, ScreenSize[0] - keybind_list_width);
-		keybind_list_y = Clamp(cursor_pos[1] - keybind_list_old_cursor[1] + keybind_list_y, 1, ScreenSize[1] - keybind_list_height);
+		keybind_list_x = Clamp(cursor_pos[0] - keybind_list_old_cursor[0] + keybind_list_x, 1, ScreenSize[0] - info_window_width);
+		keybind_list_y = Clamp(cursor_pos[1] - keybind_list_old_cursor[1] + keybind_list_y, 1, ScreenSize[1] - info_window_height);
 		keybind_list_old_cursor = cursor_pos;
 		UI.SetValue(si, "keybind_list_x", keybind_list_x);
 		UI.SetValue(si, "keybind_list_y", keybind_list_y);
@@ -3659,26 +3640,16 @@ function keybindListDrag(){
 Global.RegisterCallback("Draw", "keybindListDrag");
 
 var spectator_list_alpha = 0;
-var spectator_list_width = 180;
-var spectator_list_height = 19;
-UI.AddSliderInt("spectator_list_x", 0, ScreenSize[0] - spectator_list_width);
+UI.AddSliderInt("spectator_list_x", 0, ScreenSize[0] - info_window_width);
 UI.AddSliderInt("spectator_list_y", 0, ScreenSize[1]);
 UI.SetEnabled("spectator_list_x", 0);
 UI.SetEnabled("spectator_list_y", 0);
-var spectator_list_x = GetVal("spectator_list_x") || ScreenSize[0] - spectator_list_width - 1;
+var spectator_list_x = GetVal("spectator_list_x") || ScreenSize[0] - info_window_width - 1;
 var spectator_list_y = GetVal("spectator_list_y") || 100;
 var spectator_list_is_moving = false;
 var spectator_list_old_cursor = [0, 0];
 var spectators_alpha = [];
-var specmodes = {
-	"0": "none",
-	"1": "deathcam",
-	"2": "freezecam",
-	"3": "fixed",
-	"4": "1st",
-	"5": "3rd",
-	"6": "fly",
-};
+var spectator_modes = "none deathcam freezecam fixed 1st 3rd fly".split(" ");
 function spectatorList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Spectator list")) return;
 	var visible = false;
@@ -3686,8 +3657,9 @@ function spectatorList(){
 	var margin = 15;
 	var specs_y = spectator_list_y + 21;
 	var players = Entity.GetPlayers();
-	var sty = GUI.GetValue("Visuals", "GUI", "w. Style")
-	var font = sty ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	var style = GUI.GetValue("Visuals", "GUI", "w. Style")
+	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	
 	if(World.GetServerString())
 	for (player in players) {
 		var player = players[player];
@@ -3697,26 +3669,20 @@ function spectatorList(){
 		if(active) visible = true;
 		if ((spectators_alpha[player] = Clamp(spectators_alpha[player] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var specs_y = specs_y - margin + Math.floor((spectators_alpha[player] / 255) * margin);
-		var mode = "[" + specmodes[Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")] + "]";
+		var mode = "[" + spectator_modes[+Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")] + "]";
 		var text_size = Render.TextSizeCustom(mode, font);
 		var name = rusToEng(Entity.GetName(player));
-		if(!mustDisplayString(name, font, 9)) name = "Russian nickname";
+		//if(!mustDisplayString(rusToEng(name), font, 9)) name = "Russian nickname";
 		Render.StringCustom(spectator_list_x + 3, specs_y, 0, name, GUI.Colors.GetColor([255, 255, 255], spectators_alpha[player]), font);
-		Render.StringCustom(spectator_list_x + spectator_list_width - text_size[0] - 1, specs_y, 0, mode, GUI.Colors.GetColor([255, 255, 255], spectators_alpha[player]), font);
+		Render.StringCustom(spectator_list_x + info_window_width - text_size[0] - 1, specs_y, 0, mode, GUI.Colors.GetColor([255, 255, 255], spectators_alpha[player]), font);
 		specs_y += margin;
 	}
 	visible = visible || UI.IsMenuOpen();
 	spectator_list_alpha = Clamp(spectator_list_alpha += speed * (visible && 1 || -1), 0, 255);
 	if (spectator_list_alpha == 0) return;
-	var background = [0, 0, 0, spectator_list_alpha / 2];
 	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Spectator list"), spectator_list_alpha);
-	var x = sty ? 64 : 24
-	var y = sty ? 22 : 2
-	Render.FilledRect(spectator_list_x + 1, spectator_list_y, spectator_list_width - 2, 1, background);
-	Render.FilledRect(spectator_list_x, spectator_list_y + 1, spectator_list_width, spectator_list_height - 3, background);
-	Render.String(spectator_list_x + 2, spectator_list_y + 2, 0, "%", color, 6);
-	Render.StringCustom(spectator_list_x + x, spectator_list_y, 0, "spectators", [255, 255, 255, spectator_list_alpha], font);
-	Render.FilledRect(spectator_list_x, spectator_list_y + spectator_list_height - y, 180, 2, color);
+	drawInfoWindow(spectator_list_x, spectator_list_y, "spectators", null, spectator_list_alpha, color, font, style);
+	Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", color, 6);
 
 	//Reset invalid players
 	if(World.GetServerString())
@@ -3736,17 +3702,17 @@ function spectatorListDrag(){
 	if (GUI._MenuIsMoving) return;
 	if(!GUI.GetValue("Visuals", "GUI", "Spectator list")) return;
 	var cursor_pos = Input.GetCursorPosition();
-	spectator_list_x = Clamp(spectator_list_x, 1, ScreenSize[0] - spectator_list_width);
-	spectator_list_y = Clamp(spectator_list_y, 1, ScreenSize[1] - spectator_list_height);
+	spectator_list_x = Clamp(spectator_list_x, 1, ScreenSize[0] - info_window_width);
+	spectator_list_y = Clamp(spectator_list_y, 1, ScreenSize[1] - info_window_height);
 	if (!Input.IsKeyPressed(0x01)) {
 		spectator_list_is_moving = false;
 		spectator_list_old_cursor = cursor_pos;
 		return;
 	}
-	if (UI.IsCursorInBox(spectator_list_x, spectator_list_y, spectator_list_width, spectator_list_height) || spectator_list_is_moving) {
+	if (UI.IsCursorInBox(spectator_list_x, spectator_list_y, info_window_width, info_window_height) || spectator_list_is_moving) {
 		spectator_list_is_moving = true;
-		spectator_list_x = Clamp(cursor_pos[0] - spectator_list_old_cursor[0] + spectator_list_x, 1, ScreenSize[0] - spectator_list_width);
-		spectator_list_y = Clamp(cursor_pos[1] - spectator_list_old_cursor[1] + spectator_list_y, 1, ScreenSize[1] - spectator_list_height);
+		spectator_list_x = Clamp(cursor_pos[0] - spectator_list_old_cursor[0] + spectator_list_x, 1, ScreenSize[0] - info_window_width);
+		spectator_list_y = Clamp(cursor_pos[1] - spectator_list_old_cursor[1] + spectator_list_y, 1, ScreenSize[1] - info_window_height);
 		spectator_list_old_cursor = cursor_pos;
 		UI.SetValue(si, "spectator_list_x", spectator_list_x);
 		UI.SetValue(si, "spectator_list_y", spectator_list_y);
@@ -3756,10 +3722,9 @@ function spectatorListDrag(){
 Global.RegisterCallback("Draw", "spectatorListDrag");
 
 var watermark_alpha = 0;
-var must_display_username = null;
 function watermark(){
 	if(!GUI.GetValue("Visuals", "GUI", "Watermark")) return;
-	if(must_display_username == null) must_display_username = mustDisplayString(rusToEng(Cheat.GetUsername()), Render.AddFont("Segoe UI Semilight", 9, 200), 9);
+	//if(must_display_username == null) must_display_username = mustDisplayString(rusToEng(Cheat.GetUsername()), Render.AddFont("Segoe UI Semilight", 9, 200), 9);
 	var visible = World.GetServerString() || UI.IsMenuOpen();
 	var speed = 14;
 	watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255);
@@ -3768,7 +3733,7 @@ function watermark(){
 	var y = 3;
 	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Watermark"), watermark_alpha);
 	var elemets = ["     " + GUI.LogoText.toLowerCase()];
-	if(must_display_username) elemets.push(rusToEng(Cheat.GetUsername()));
+	elemets.push(rusToEng(Cheat.GetUsername()));
 	if(World.GetServerString()) elemets.push("delay: " + ((World.GetServerString() == "local server") ? 0 : Math.floor(Global.Latency() * 1000 / 1)) + "ms");
 	var today = new Date();
     var hours1 = today.getHours();
