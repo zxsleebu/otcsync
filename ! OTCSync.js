@@ -137,7 +137,7 @@ GUI.InitElements = function(){
 		}
 	}
 
-	for(Checkbox in GUI.Checkboxes){
+	for(Checkbox = 0; Checkbox < GUI.Checkboxes.length; Checkbox++){
 		if(Checkbox % 8 === 0){
 			var Checkboxes = GUI.Checkboxes.slice(Checkbox).slice(0, 8);
 			var name = ("gui_checkboxes" + Checkbox / 8);
@@ -321,7 +321,7 @@ GUI.DrawHeader = function(){
 	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + 5, HeaderLogoY + GUI.Scale(5 + IconMarginY), 0, GUI._TabIcons[GUI.ActiveTab], TabNameColor, GUI.Fonts.HeaderTabIcon);
 	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + GUI.Scale(22), HeaderLogoY + GUI.Scale(2) - 1, 0, GUI.ActiveTab, TabNameColor, GUI.Fonts.HeaderTabText);
 
-	Render.Line(GUI.X, HeaderLineY, GUI.X + GUI.Scale(GUI.Width), HeaderLineY, LineColor);
+	Render.Line(GUI.X, HeaderLineY, GUI.X + Math.floor(GUI.Width * GUI._Scale), HeaderLineY, LineColor);
 
 	if (UI.IsCursorInBox(HeaderLogoX, HeaderLogoY + GUI.Scale(4), HeaderLogoSize[0], HeaderLogoSize[1]) && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && !GUI._ColorMenuOpened){
 		if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._MenuIsMoving && GUI._SliderChanging === false) GUI._AnimatingBack = true;
@@ -620,7 +620,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	}
 	if (Element.Key == 0) KeyName = "none";
 	var HotkeyKeyNameTextSize = Render.TextSizeCustom(KeyName, GUI.Fonts.HotkeyKeyName);
-	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] * 1.1 + 2, 14, 100));
+	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] * GUI.Scale(1.1) + 2, 14, 100));
 	var HotkeyX = HotkeyTextX + GUI.ContainerWidth - HotkeyWidth;
 
 	var HotkeyMenuWidth = GUI.Scale(40);
@@ -1749,7 +1749,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 66
+//Last index is 63
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1803,7 +1803,7 @@ GUI.AddSubtab("Doubletap");
 GUI.AddCheckbox("Recharge speed", 9);
 GUI.AddSlider("Recharge ticks", 0, 16, 10).master("Recharge speed");
 GUI.AddDropdown("DT Boost", ["None", "Speed boost", "Lag peek (pizdec)"]);
-GUI.AddSlider("Extrapolate ticks", 0, 16, 3);
+GUI.AddSlider("Extrapolate ticks", 4, 16, 4);
 
 GUI.AddSubtab("Other");
 GUI.AddHotkey("Extended backtracking", "hold");
@@ -1853,8 +1853,10 @@ GUI.AddCheckbox("Line tracer", 61).master("Nade prediction").flags(GUI.SAME_LINE
 GUI.AddCheckbox("Trail", 29).additional("color");
 
 GUI.AddSubtab("Players");
+GUI.AddCheckbox("Hit marker", 63).additional("color");
 GUI.AddCheckbox("Skeleton on hit", 22).additional("color");
-GUI.AddCheckbox("Damage markers", 23).additional("color");
+GUI.AddCheckbox("Damage marker", 23).additional("color");
+GUI.AddCheckbox("Outline", 23).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("History chams on extended backtrack", 24);
 GUI.AddCheckbox("Better glow chams", 8).additional("color");
 GUI.AddCheckbox("Hollow", 3).master("Better glow chams");
@@ -1891,9 +1893,9 @@ GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Inverter check", 64).master("Indicators").flags(GUI.SAME_LINE)
+GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
 GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
-GUI.AddCheckbox("Indicators custom color", 63).master("Indicators").additional("color");
+GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
 GUI.AddSlider("Add y for indicators", 0, 75, 65).master("Indicators")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddDropdown("k. Style", ['default', 'skeet']).flags(GUI.SAME_LINE).master("Keybind list");
@@ -2753,6 +2755,12 @@ function autopeek(){
 	if(!GUI.GetValue("Rage", "General", "Auto peek helper")) return;
 	autopeek_active = isAutopeeking();
 	var dt = GUI.GetValue("Rage", "General", "Auto enable DT");
+	if(hideshots_enable_time !== false && isAutopeeking()){
+		var enabled = Globals.Tickcount() > hideshots_enable_time;
+		if (UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Hide shots") && !enabled) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Hide shots");
+		GUI.OverrideState("Misc", "Keybinds fixer", "Hide shots", enabled);
+		if(exploitsActive("hs")) hideshots_enable_time = false;
+	}
 	if(autopeek_active){
 		block_set2 = false;
 		force_mindamage_override = 1;
@@ -2868,20 +2876,16 @@ function legitAA(){
 		var lower_body_offset = -60 * fake_direction;
 		var current_fake_yaw = Local.GetFakeYaw();
 		var current_real_yaw = Local.GetRealYaw();
-		if (Math.abs(angle_diff(current_fake_yaw, current_real_yaw)) > 100) {
-			lower_body_offset = 180;
-		}
+		if (Math.abs(angle_diff(current_fake_yaw, current_real_yaw)) > 100) lower_body_offset = 180;
 		AntiAim.SetFakeOffset(0);
 		AntiAim.SetRealOffset(real_yaw_offset);
 		AntiAim.SetLBYOffset(lower_body_offset);
-		if (getWeaponName() == "C4") { use(); return }
+		if (getWeaponName() == "C4") return use();
 		var eyepos = Entity.GetEyePosition(local);
 		var C4 = Entity.GetEntitiesByClassID(129);
-		if (C4 !== undefined && C4[0] !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) { use(); return }
+		if (C4 && C4[0] !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) return use();
 		var hostages = Entity.GetEntitiesByClassID(97);
-		if (hostages !== undefined && hostages.length > 0) {
-			for (hostage in hostages) if (calcDist(Entity.GetRenderOrigin(hostages[hostage]), eyepos) <= 100) { use(); return }
-		}
+		if (hostages && hostages.length > 0) for (hostage in hostages) if (calcDist(Entity.GetRenderOrigin(hostages[hostage]), eyepos) <= 100) return use();
 	}
 	else {
 		legit_aa_active = false;
@@ -3009,7 +3013,7 @@ function betterAutoStrafer(){
 	if (!isAlive) return;
 	var speed = Clamp(Convar.GetString("sv_airaccelerate") * 12);
 	UI.SetValue("Misc", "GENERAL", "Movement", "Turn speed", speed, 100, 400);
-	if(!GUI.GetValue("Misc", "General", "Auto crouch in air") || speed < 300) return;
+	if(!GUI.GetValue("Misc", "General", "Auto crouch in air") || speed < 400) return;
 	UI.SetValue("Misc", "GENERAL", "Movement", "Crouch in air", +!(Entity.GetProp(local, 'CBasePlayer', 'm_fFlags') & 1));
 }
 
@@ -3366,10 +3370,10 @@ function renderDtCircle(x, y, col){
 	for (i = 0; i < Math.floor(length / s); i++) arr.push(s);
 	var mod = Math.floor(length % s);
 	if(mod !== 0) arr.push(mod);
-	if(arr[0] !== undefined) Render.FilledRect(x + 1, y, arr[0], 2, col);
-	if(arr[1] !== undefined) Render.FilledRect(x + s, y + 1, 2, arr[1], col);
-	if(arr[2] !== undefined) Render.FilledRect(x - arr[2] + s + 1, y + s, arr[2], 2, col);
-	if(arr[3] !== undefined) Render.FilledRect(x, y - arr[3] + s + 1, 2, arr[3], col);
+	if(arr[0]) Render.FilledRect(x + 1, y, arr[0], 2, col);
+	if(arr[1]) Render.FilledRect(x + s, y + 1, 2, arr[1], col);
+	if(arr[2]) Render.FilledRect(x - arr[2] + s + 1, y + s, arr[2], 2, col);
+	if(arr[3]) Render.FilledRect(x, y - arr[3] + s + 1, 2, arr[3], col);
 }
 
 function renderDtAndCircle(x, y, centered, c, i){
@@ -3422,25 +3426,21 @@ function indicators(){
 	if (type === 1) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? c1 : c2), font);
-		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
-		} else {
-		Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
+			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? c1 : c2), font);
+			Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
 		}
+		else Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
 	}
 	else if (type === 2) {
 		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-		Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? c1 : c2), font);
-		Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
-		} else {
-		Render.StringCustom(x, y, centered, "otcsync", def, font);
-		}
+			Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? c1 : c2), font);
+			Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
+		} else Render.StringCustom(x, y, centered, "otcsync", def, font);
 		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
-		if (centered)
-		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
+		if (centered) Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
@@ -3450,7 +3450,7 @@ function indicators(){
 		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
-		if (type === 1 && type !== 2 && ~("ld|legit aa|freestand".split("|")).indexOf(text)) continue;
+		if (type === 1 && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
 		text = (type !== 0 && text == "auto") ? "peek" : text;
 		text = (type !== 0) ? text.toUpperCase() : text;
 		Render.StringCustom(x, cY + (type === 2 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], type === 2 ? fonta : font);
@@ -3686,7 +3686,10 @@ function spectatorList(){
 
 	//Reset invalid players
 	if(World.GetServerString())
-	for(spec in spectators_alpha) if(!Entity.IsValid(spectators_alpha[spec]) && spec !== "more" && !spectators_alpha[spec]) spectators_alpha[spec] = 0;
+	for(i = 0; i < spectators_alpha.length; i++){
+		s = spectators_alpha[i];
+		if(s && (!Entity.IsValid(s) || Entity.IsAlive(s) || Entity.IsDormant(s) || s === local)) spectators_alpha[i] = 0;
+	}
 
 	//api issue, can't delete
 	//tbh i can but im lazy to do a workaround :/
@@ -3910,6 +3913,7 @@ function drawDefensive(){
 	var size = 6;
 	for(pos in defensive_pos){
 		pos = Render.WorldToScreen(defensive_pos[pos]);
+		if(!pos) continue;
 		Render.FilledRect(pos[0] - size / 2, pos[1] - size / 2, size, size, [0, 255, 0, 255]);
 	}
 }
@@ -4099,6 +4103,101 @@ function defensiveDTAfterShot(){
 	}
 }
 Cheat.RegisterCallback("weapon_fire", "defensiveDTAfterShot");
+
+var skeleton_draw_time = 4;
+var hitlist = [[], [], []];
+function skeletonOnHit(){
+	if(!GUI.GetValue("Visuals", "Players", "Skeleton on hit") || Entity.GetEntityFromUserID(Event.GetString("attacker")) !== local) return;
+    var hitboxPos = [];
+    for (var i = 0; i < 19; i++) hitboxPos.push(Entity.GetHitboxPosition(Entity.GetEntityFromUserID(Event.GetString("userid")), i));
+    hitlist[0].push(Global.Curtime() + skeleton_draw_time), hitlist[1].push(hitboxPos);
+}
+function skeletonOnHit2(){
+	if (!GUI.GetValue("Visuals", "Players", "Skeleton on hit") || hitlist[0].length == 0) return;
+	var color = GUI.GetColor("Visuals", "Players", "Skeleton on hit");
+    for(var i = 0; i < hitlist[0].length; i++)
+    if(Global.Curtime() < hitlist[0][i]) skeletonOnHit3(hitlist[1][i], color);
+	else hitlist[0].splice(i, 1), hitlist[1].splice(i, 1), hitlist[2].splice(i, 1);
+}
+function skeletonOnHit3(pos, col){
+    var skel = [[0, 1],[1, 6],[6, 5],[5, 4],[4, 3],[3, 2],[2, 7],[2, 8],[8, 10],
+	[10, 12],[7, 9],[9, 11],[6, 15],[15, 16],[16, 13],[6, 17],[17, 18],[18, 14]];
+    for (var i = 0; i < skel.length; i++){
+        var p1 = Render.WorldToScreen(pos[skel[i][0]]);
+        var p2 = Render.WorldToScreen(pos[skel[i][1]]);
+		if(!p1 || !p2) continue;
+        Render.Line(p1[0], p1[1], p2[0], p2[1], col);
+    }
+}
+Global.RegisterCallback("player_hurt", "skeletonOnHit");
+Global.RegisterCallback("Draw", "skeletonOnHit2");
+
+//Hitmarker
+var hitShots = [];
+const hitgroup_to_hitbox = {1: 0, 2: 5, 3: 2, 4: 13, 5: 14, 6: 12, 7: 11};
+function hitShotsHandle(){
+	var hitmarkerEnabled = GUI.GetValue("Visuals", "Players", "Hit marker");
+	var damageMarkerEnabled = GUI.GetValue("Visuals", "Players", "Damage marker");
+	if(!hitmarkerEnabled && !damageMarkerEnabled) return;
+	var s = 7;
+	var disableTime = 250;
+	for(shot in hitShots){
+		if(!shot) continue;
+		var w2s = Render.WorldToScreen(hitShots[shot][1]);
+		if(!w2s) continue;
+		var time = hitShots[shot][2];
+		if(time > disableTime){
+			hitShots.splice(shot, 1);
+			continue;
+		}
+		var x = w2s[0];
+		var y = w2s[1];
+		var alpha = 255 * (1 - (time / disableTime));
+		if(hitmarkerEnabled){
+			var col = GUI.GetColor("Visuals", "Players", "Hit marker");
+			col[3] = alpha;
+			Render.Line(x + s, y + s, x + (s / 3), y + (s / 3), col);
+        	Render.Line(x + s, y - s, x + (s / 3), y - (s / 3), col);
+        	Render.Line(x - s, y - s, x - (s / 3), y - (s / 3), col);
+        	Render.Line(x - s, y + s, x - (s / 3), y + (s / 3), col);
+		}
+		if(damageMarkerEnabled){
+			var col = GUI.GetColor("Visuals", "Players", "Damage marker");
+			y = y - 16 - Math.floor(time / 2);
+			x = x - 15 + hitShots[shot][3];
+			col[3] = alpha;
+			var font = Render.AddFont("Verdana", 8, 600);
+			var dmg = hitShots[shot][0] + "";
+			if(GUI.GetValue("Visuals", "Players", "Outline")){
+			    Render.StringCustom(x + 1, y, 0, dmg, [0, 0, 0, alpha], font);
+			    Render.StringCustom(x - 1, y, 0, dmg, [0, 0, 0, alpha], font);
+			    Render.StringCustom(x, y + 1, 0, dmg, [0, 0, 0, alpha], font);
+			    Render.StringCustom(x, y - 1, 0, dmg, [0, 0, 0, alpha], font);
+			}
+			Render.StringCustom(x, y, 0, dmg, col, font);
+		}
+		hitShots[shot][2]++;
+	}
+}
+function addHitShot(){
+	if(!GUI.GetValue("Visuals", "Players", "Damage marker") && !GUI.GetValue("Visuals", "Players", "Hit marker")) return;
+	var hitbox = Entity.GetHitboxPosition(Entity.GetEntityFromUserID(Event.GetInt("userid")), hitgroup_to_hitbox[Event.GetInt("hitgroup")] != undefined ? hitgroup_to_hitbox[Event.GetInt("hitgroup")] : 3);
+	if (Entity.GetEntityFromUserID(Event.GetString("attacker")) == Entity.GetLocalPlayer())
+		hitShots.push([Event.GetInt("dmg_health"), hitbox, 0, Math.floor(Math.random() * Math.floor(30))]);
+}
+Global.RegisterCallback("player_hurt", "addHitShot");
+Global.RegisterCallback("Draw", "hitShotsHandle");
+
+var hideshots_enable_time = false;
+function autoPeekHelperHSTP(){
+	if(!GUI.GetValue("Rage", "General", "Auto peek helper") || !isAutopeeking()) return;
+	if(Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local) return;
+	if(!exploitsActive("hs")) return;
+	if (UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Hide shots")) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Hide shots");
+	GUI.OverrideState("Misc", "Keybinds fixer", "Hide shots", false);
+	hideshots_enable_time = Globals.Tickcount() + 32;
+}
+Global.RegisterCallback("weapon_fire", "autoPeekHelperHSTP");
 
 //Clean up
 Duktape.gc();
