@@ -19,7 +19,7 @@ function ptr(obj){
 });
 var ScreenSize = Render.GetScreenSize();
 const si = "Script items";
-var GUI = {
+var GUI = Duktape.compact({
 	BackgroundOpacity: 0,
 	TextOpacity: 0,
 	AnimationSpeed: 1,
@@ -85,7 +85,7 @@ var GUI = {
 	SAME_LINE: (1 << 1),
 	NOT_SAVEABLE: (1 << 2),
 	CHECKBOX_VIEW: (1 << 3),
-};
+});
 GUI.Init = function(name){
 	GUI.LogoText = name;
 }
@@ -95,11 +95,10 @@ GUI.InitElements = function(){
 	for(TabName in GUI._MenuElements){
 		for(SubtabName in GUI._MenuElements[TabName]){
 			for(Element in GUI._MenuElements[TabName][SubtabName]){
-				//if(!Element) continue;
 				var Elem = GUI._MenuElements[TabName][SubtabName][Element];
 				switch (Elem.Type) {
 					case "checkbox":
-						if(Elem.ColorHSV !== undefined){
+						if(Elem.Color !== undefined){
 							GUI.ColorPickers.push(Element);
 							UI.AddColorPicker(Element);
 							UI.SetEnabled(si, Element, 0);
@@ -109,8 +108,10 @@ GUI.InitElements = function(){
 						break;
 					case "slider":
 						UI.AddSliderInt(Element, Elem.Min, Elem.Max);
-						Elem.SetValue(Elem.Default || Elem.Min);
+						UI.AddCheckbox(Element + "_not_def")
 						UI.SetEnabled(si, Element, 0);
+						UI.SetEnabled(si, Element + "_not_def", 0);
+						if (!UI.GetValue(si, Element + "_not_def")) UI.SetValue(si, Element, Elem.Value);
 						break;
 					case "hotkey": {
 						GUI.Hotkeys.push(Element);
@@ -136,7 +137,7 @@ GUI.InitElements = function(){
 		}
 	}
 
-	for(Checkbox = 0; Checkbox < GUI.Checkboxes.length; Checkbox++){
+	for(Checkbox in GUI.Checkboxes){
 		if(Checkbox % 8 === 0){
 			var Checkboxes = GUI.Checkboxes.slice(Checkbox).slice(0, 8);
 			var name = ("gui_checkboxes" + Checkbox / 8);
@@ -150,6 +151,44 @@ GUI.InitElements = function(){
 
 	UI.SetEnabled(si, "gui_x", 0);
 	UI.SetEnabled(si, "gui_y", 0);
+
+	for(TabName in GUI._MenuElements){
+		for(SubtabName in GUI._MenuElements[TabName]){
+			for(Element in GUI._MenuElements[TabName][SubtabName]){
+				var Elem = GUI._MenuElements[TabName][SubtabName][Element];
+				switch (Elem.Type) {
+					case "checkbox":
+						if(Elem.Color !== undefined){
+							var color = GUI.GetColor(TabName, SubtabName, Elem.Name, false);
+							Elem.Color = color[0];
+							Elem.ColorHSV = color[1];
+						}
+						Elem.State = GUI.GetValue(TabName, SubtabName, Elem.Name, false);
+						break;
+					case "slider":
+						if (UI.GetValue(si, Element + "_not_def")) Elem.Value = GUI.GetValue(TabName, SubtabName, Elem.Name, false);
+						break;
+					case "hotkey":
+						var HotkeySettings = GUI.GetValue(TabName, SubtabName, Elem.Name, false);
+						Elem.Mode = HotkeySettings[0];
+						Elem.Key = HotkeySettings[1];
+						Elem.KeyName = HotkeySettings[2];
+						break;
+					case "color":
+						var color = GUI.GetColor(TabName, SubtabName, Elem.Name, false);
+						Elem.Color = color[0];
+						Elem.ColorHSV = color[1];
+						break;
+					case "dropdown": 
+						if(Elem.Flags & GUI.NOT_SAVEABLE) break;
+						var val = UI.GetValue(si, Element);
+						if(Elem.Elements[val] === undefined) UI.SetValue(si, Element, val = 0);
+						Elem.Value = val;
+						break;
+				}
+			}
+		}
+	}
 
 	if(GetVal("loaded")) GUI.ScriptIsLoaded = true;
 	UI.SetValue(si, "loaded", 1);
@@ -282,7 +321,7 @@ GUI.DrawHeader = function(){
 	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + 5, HeaderLogoY + GUI.Scale(5 + IconMarginY), 0, GUI._TabIcons[GUI.ActiveTab], TabNameColor, GUI.Fonts.HeaderTabIcon);
 	Render.StringCustom(ArrowAfterLogoX + ArrowAfterLogoWidth + GUI.Scale(22), HeaderLogoY + GUI.Scale(2) - 1, 0, GUI.ActiveTab, TabNameColor, GUI.Fonts.HeaderTabText);
 
-	Render.Line(GUI.X, HeaderLineY, GUI.X + Math.floor(GUI.Width * GUI._Scale), HeaderLineY, LineColor);
+	Render.Line(GUI.X, HeaderLineY, GUI.X + GUI.Scale(GUI.Width), HeaderLineY, LineColor);
 
 	if (UI.IsCursorInBox(HeaderLogoX, HeaderLogoY + GUI.Scale(4), HeaderLogoSize[0], HeaderLogoSize[1]) && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && !GUI._ColorMenuOpened){
 		if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._MenuIsMoving && GUI._SliderChanging === false) GUI._AnimatingBack = true;
@@ -300,6 +339,15 @@ GUI.DrawHeader = function(){
 	var UsernameColor = GUI.Colors.AnimateBackground(GUI.Colors.Username);
 
 	Render.StringCustom(UsernameX, GUI.Y + 2, 0, Username, UsernameColor, GUI.Fonts.Username);
+
+	/*var AvatarColor = GUI.Colors.StringToColor(Username);
+	var AvatarLetter = Username.charAt(0);
+	var AvatarLetterColor = GUI.Colors.GetContrastColor(AvatarColor, [255, 255, 255, 255], [0, 0, 0, 255]);
+	var AvatarLetterTextSize = Render.TextSizeCustom(AvatarLetter, GUI.Fonts.AvatarLetter);
+	Render.Arc(UsernameX - 14, GUI.Y + 13, 11, 11, 0, 300, GUI.Colors.HexToRgb(AvatarColor));
+	Render.FilledCircle(UsernameX - 14, GUI.Y + 14, 11, GUI.Colors.Checkbox);
+	Render.Circle(UsernameX - 14, GUI.Y + 14, 11, GUI.Colors.CheckboxBorder);
+	Render.StringCustom(UsernameX - 14 - AvatarLetterTextSize[0] / 2, GUI.Y + 1, 0, AvatarLetter, AvatarLetterColor, GUI.Fonts.AvatarLetter);*/
 }
 GUI.DrawSubtabList = function(){
 	if(GUI.ActiveTab === "" || GUI._MenuAnimation[2] < 1) return;
@@ -393,7 +441,7 @@ GUI.DrawElements = function(){
 GUI.RenderElement = function(E, x, y, id){
 	switch(E.Type){
 		case "checkbox":
-			GUI.DrawCheckbox(x, y, E.Name, id);
+			GUI.DrawCheckbox(x, y, E.Name, id, E.State);
 			break;
 		case "slider":
 			GUI.DrawSlider(x, y, E.Name, id);
@@ -436,11 +484,11 @@ GUI.DrawRightArrow = function(x, y, width, height, color){
 GUI.Scale = function(int){
 	return Math.ceil(int * GUI._Scale);
 }
-GUI.DrawCheckbox = function(x, y, name, id){
+GUI.DrawCheckbox = function(x, y, name, id, state){
 	var CheckboxWidth = GUI.Scale(14);
 	var CheckboxHeight = CheckboxWidth;
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
-	var CheckboxState = Element.GetValue();
+	var CheckboxState = state || Element.State;
 	if(CheckboxState) GUI._ElementAnimation[id] = 1;
 	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
 	var CheckboxColor = ((CheckboxState) ? GUI.Colors.ActiveElement : GUI.Colors.Checkbox);
@@ -468,8 +516,10 @@ GUI.DrawCheckbox = function(x, y, name, id){
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 	if(CheckboxState){
 		var ElementEndX = Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4);
-		if(Element.ColorHSV !== undefined) GUI.DrawColor(ElementEndX, y, name, id, true);
-		else if(Element.Submenu === true){
+		if(Element.Color !== undefined){
+			GUI.DrawColor(ElementEndX, y, name, id, true);
+		}
+		else if(Element.Submenu !== undefined){
 			var x = ElementEndX + GUI.Scale(4);
 			var y = y + GUI.Scale(21);
 			var w = 2 * parseInt(GUI.Scale(4) / 2);
@@ -500,7 +550,7 @@ GUI.DrawSlider = function(x, y, name, id){
 	Render.SmoothRect(SliderX, SliderY, SliderWidth, SliderHeight, SliderBorderColorAnimated);
 	Render.SmoothRect(SliderX + 1, SliderY + 1, SliderWidth - 2, SliderHeight - 2, SliderColorAnimated);
 	var Slider = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
-	var Value = Clamp(Slider.GetValue(), Slider.Min, Slider.Max);
+	var Value = Clamp(Slider.Value, Slider.Min, Slider.Max);
 	var ValueStart = 1;
 	var Percent = (SliderWidth - ValueStart) / Math.abs(Slider.Min - Slider.Max);
 	var Progress = Value * Percent - (Slider.Min * Percent);
@@ -544,33 +594,31 @@ GUI.DrawHotkey = function(x, y, name, id){
 	var Hotkey = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
 	var HotkeyTextX = x + GUI.Scale(18);
 	var HotkeyHeight = GUI.Scale(16);
-
+	//var HotkeyMinX = GUI.ContainerWidth;
+	//var HotkeyTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
 	Render.StringCustom(HotkeyTextX, y + 14, 0, name, HotkeyTextColor, GUI.Fonts.Menu);
 
-	var Value = Hotkey.GetValue();
+	var KeyName = Hotkey.KeyName || "none";
 
-	var KeyName = Value[2] || "none";
-	var Key = Value[1];
-	var Mode = Value[0];
-	if(Mode === "always") KeyName = "on";
-	if(Mode === "none") KeyName = "none";
+	if(Hotkey.Mode === "always") KeyName = "on";
+	if(Hotkey.Mode === "none") KeyName = "none";
 
 	if(GUI._HotkeyIsChanging === id){
 		KeyName = "...";
 		var PressedKeys = GUI.GetAllPressedKeys();
 		if(!Input.IsKeyPressed(1)) GUI._ClickBlock = false;
 		if(PressedKeys.length && !GUI._ClickBlock){
-			var Mode = (Mode === "none") ? Hotkey.DefaultMode : Mode;
+			var mode = (Hotkey.Mode === "none") ? Hotkey.DefaultMode : Hotkey.Mode;
 			var pressedkey = PressedKeys[0][0];
 
 			//genius code ikr
-			if(pressedkey == 27) Hotkey.SetValue([Mode = "none", pressedkey = 0]);
-			else Hotkey.SetValue([Mode, pressedkey]);
+			if(pressedkey == 27) pressedkey = !+(mode = Hotkey.Mode = "none");
+			else Hotkey.SetValue([mode, pressedkey]);
 			GUI._HotkeyIsChanging = false;
 			GUI._ClickBlock = false;
 		}
 	}
-	if (Key == 0 && Mode !== "always") KeyName = "none";
+	if (Element.Key == 0) KeyName = "none";
 	var HotkeyKeyNameTextSize = Render.TextSizeCustom(KeyName, GUI.Fonts.HotkeyKeyName);
 	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] * 1.1 + 2, 14, 100));
 	var HotkeyX = HotkeyTextX + GUI.ContainerWidth - HotkeyWidth;
@@ -586,7 +634,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	if (UI.IsCursorInBox(HotkeyX, y + GUI.Scale(16), HotkeyWidth, HotkeyHeight)){
 		GUI._ElementAnimation[id] += 0.06;
 		if (!GUI._HotkeyIsChanging && GUI._HotkeyMenuOpened === false && GUI._SliderChanging === false && GUI._HotkeyMenuAnimation[0] === 0 && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0){
-			if(Input.IsKeyPressed(1) && Mode !== "always"){
+			if(Input.IsKeyPressed(1) && Hotkey.Mode !== "always"){
 				if(!GUI._ClickBlock){
 					GUI._ClickBlock = true;
 					GUI._HotkeyIsChanging = id;
@@ -646,11 +694,6 @@ GUI.DrawHotkeyMenu = function(){
 	var HotkeyMenuColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, HotkeyMenuAnimation));
 	var HotkeyMenuBorderColor = GUI.Colors.GetColor(GUI.Colors.ActiveElement, Lerp(0, 255, HotkeyMenuTextAnimation));
 	var Hotkey = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._HotkeyMenuOpened];
-	if(GUI._HotkeyMenuOpened !== false){
-		var Value = Hotkey.GetValue();
-		var Key = Value[1];
-		var Mode = Value[0];
-	}
 	Render.SmoothRect(GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] - 1, HotkeyMenuWidth + 2, HotkeyMenuHeightAnimated + 2, HotkeyMenuBorderColor);
 	Render.SmoothRect(GUI._HotkeyMenuPos[0], GUI._HotkeyMenuPos[1], HotkeyMenuWidth, HotkeyMenuHeightAnimated, HotkeyMenuColorAnimated);
 	Render.Line(GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] + 2, GUI._HotkeyMenuPos[0] - 1, GUI._HotkeyMenuPos[1] + HotkeyMenuHeightAnimated - 2, HotkeyMenuBorderColor);
@@ -659,14 +702,14 @@ GUI.DrawHotkeyMenu = function(){
 		var MenuElement = HotkeyMenuElements[Index];
 		var MenuElementX = GUI._HotkeyMenuPos[0] + 3;
 		var IsNotLast = (Index !== HotkeyMenuElements.length - 1);
-		var IsActive = (GUI._HotkeyMenuOpened !== false) ? (Mode === MenuElement) : false;
+		var IsActive = (GUI._HotkeyMenuOpened !== false) ? (GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._HotkeyMenuOpened].Mode === MenuElement) : false;
 		var MenuElementY = GUI._HotkeyMenuPos[1] + ((HotkeyMenuElementsHeight + ((IsNotLast) ? HotkeyMenuElementsMargin : 0)) * Index);
 		var MenuElementHeight = HotkeyMenuElementsHeight + ((IsNotLast) ? HotkeyMenuElementsMargin : 0);
 		Render.StringCustom(MenuElementX, MenuElementY, 0, MenuElement, HotkeyMenuTextColorAnimated, GUI.Fonts.HotkeyKeyName);
 		if(IsActive) GUI._HotkeyMenuAnimation[2][Index] += 0.06;
 		if(UI.IsCursorInBox(MenuElementX, MenuElementY, HotkeyMenuWidth, MenuElementHeight)){
 				if(Input.IsKeyPressed(1) && GUI._HotkeyMenuOpened !== false){
-					Hotkey.SetValue([MenuElement, Key]);
+					Hotkey.SetValue([MenuElement, Hotkey.Key]);
 					GUI._HotkeyMenuOpened = false;
 					GUI._ClickBlock = true;
 				}
@@ -686,7 +729,7 @@ GUI.DrawColor = function(x, y, name, id, isAdditional){
 	var ColorBoxWidth = GUI.Scale(14);
 	var ColorBoxHeight = ColorBoxWidth;
 	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
-	var ColorBoxColor = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id].GetColor();
+	var ColorBoxColor = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id].Color;
 	var ColorBoxColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, ColorBoxColor, Animation, Clamp(ColorBoxColor[3] - (255 - GUI._MenuAnimation[1] * 255), 0, 255));
 	var ColorBoxTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var ColorBoxTextSize = Render.TextSizeCustom(name, GUI.Fonts.Menu);
@@ -696,7 +739,9 @@ GUI.DrawColor = function(x, y, name, id, isAdditional){
 		Render.StringCustom(ColorBoxTextX, y + 14, 0, name, ColorBoxTextColor, GUI.Fonts.Menu);
 		var ColorBoxX = Clamp(ColorBoxTextX + ColorBoxTextSize[0] + 8, ColorBoxTextX + GUI.ContainerWidth - ColorBoxWidth, ColorBoxTextX + GUI.Scale(GUI.Width));
 	}
-	else var ColorBoxX = x;
+	else{
+		var ColorBoxX = x;
+	}
 
 	if(ColorBoxColor[3] !== 255){
 		Render.FilledRect(ColorBoxX, ColorBoxY, ColorBoxWidth / 2, ColorBoxHeight / 2, [255, 255, 255, Animation * 255]);
@@ -767,12 +812,16 @@ GUI.DrawColorPicker = function(){
 	if(GUI._ColorPickerOpened !== false){
 		GUI._ColorPickerAnimation[0] += 0.07;
 
-		if(GUI._ColorPickerAnimation[0] >= 0.95) GUI._ColorPickerAnimation[1] += 0.07;
+		if(GUI._ColorPickerAnimation[0] >= 0.95){
+			GUI._ColorPickerAnimation[1] += 0.07;
+		}
 	}
 	else{
 		GUI._ColorPickerAnimation[1] -= 0.07;
 
-		if(GUI._ColorPickerAnimation[1] <= 0.05) GUI._ColorPickerAnimation[0] -= 0.07;
+		if(GUI._ColorPickerAnimation[1] <= 0.05){
+			GUI._ColorPickerAnimation[0] -= 0.07;
+		}
 	}	
 
 	GUI._ColorPickerAnimation[0] = Clamp(GUI._ColorPickerAnimation[0], 0, 1);
@@ -789,9 +838,8 @@ GUI.DrawColorPicker = function(){
 	var ColorPickerY = GUI._ColorPickerPos[1] + ColorPickerMargin;
 	Render.SmoothRect(GUI._ColorPickerPos[0], GUI._ColorPickerPos[1], ColorPickerWidth, ColorPickerHeightAnimated, ColorPickerColorAnimated);
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._ColorPickerActive];
-	var Colors = Element.GetColor(true);
-	var ColorRGB = Colors[0];
-	var Color = Colors[1];
+	var Color = Element.ColorHSV;
+	var ColorRGB = Element.Color;
 	for(v = 0; v < 255; v++){
 		var opacity = Clamp(ColorPickerSecondaryAnimation * 255 * 2 - v, 0, 255);
 		Render.GradientRect(ColorPickerX, ColorPickerY + v, 255, 1, 1, GUI.Colors.GetColor(GUI.Colors.HSVToRGB(Color[0], 1, 1 - (v / 255)), opacity), GUI.Colors.GetColor(GUI.Colors.HSVToRGB(Color[0], 0, 1 - (v / 255)), opacity));
@@ -819,24 +867,28 @@ GUI.DrawColorPicker = function(){
 		if(Input.IsKeyPressed(1)){
 			Color[1] = Clamp(1 - ((CursorPos[0] - ColorPickerX) / 255), 0, 1);
 			Color[2] = Clamp(1 - ((CursorPos[1] - ColorPickerY) / 255), 0, 1);
+			Element.SetColor([GUI.Colors.HSVToRGB(Color), Color]);
 			GUI._ColorPickerIsChanging = "color";
 		}
 	}
 	else if((UI.IsCursorInBox(ColorPickerX - 1, HueSliderY, 255 + 2, 30) && !GUI._ColorPickerIsChanging) || GUI._ColorPickerIsChanging === "hue"){
 		if(Input.IsKeyPressed(1)){
 			Color[0] = Clamp((CursorPos[0] - ColorPickerX) / 255, 0, 1);
+			Element.SetColor([GUI.Colors.HSVToRGB(Color), Color]);
 			GUI._ColorPickerIsChanging = "hue";
 		}
 	}
 	else if((UI.IsCursorInBox(ColorPickerX - 1, AlphaSliderY, 255 + 2, 30) && !GUI._ColorPickerIsChanging) || GUI._ColorPickerIsChanging === "alpha"){
 		if(Input.IsKeyPressed(1)){
 			Color[3] = Clamp((CursorPos[0] - ColorPickerX), 0, 255);
+			Element.SetColor([GUI.Colors.HSVToRGB(Color), Color]);
 			GUI._ColorPickerIsChanging = "alpha";
 		}
 	}
-	Element.SetColor([GUI.Colors.HSVToRGB(Color), Color]);
 
-	if(!Input.IsKeyPressed(1)) GUI._ColorPickerIsChanging = false;
+	if(!Input.IsKeyPressed(1)){
+		GUI._ColorPickerIsChanging = false;
+	}
 }
 GUI.DrawColorMenu = function(){
 	var ColorMenuWidth = 40;
@@ -880,18 +932,23 @@ GUI.DrawColorMenu = function(){
 			if (Input.IsKeyPressed(1) && GUI._ColorMenuOpened !== false) {
 				if(Index == 0){
 					var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._ColorMenuOpened];
-					GUI._CopiedColor = Element.GetColor();
-				}
-				else if (Index == 1) {
-					if (GUI._CopiedColor !== null) GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._ColorMenuOpened].SetColor(GUI._CopiedColor);
+					GUI._CopiedColor = Element.Color;
+				} else if (Index == 1) {
+					if (GUI._CopiedColor !== null) {
+						GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._ColorMenuOpened].SetColor(GUI._CopiedColor);
+					}
 				}
 				GUI._ColorMenuOpened = false;
 				GUI._ClickBlock = true;
 			}
-			else GUI._ClickBlock = false;
+			else {
+				GUI._ClickBlock = false;
+			}
 			GUI._ColorMenuAnimation[2][Index] += 0.06;
 		}
-		else GUI._ColorMenuAnimation[2][Index] -= 0.06;
+		else {
+			GUI._ColorMenuAnimation[2][Index] -= 0.06;
+		}
 
 		GUI._ColorMenuAnimation[2][Index] = Clamp(GUI._ColorMenuAnimation[2][Index], 0, 1);
 	}
@@ -916,7 +973,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 	if (!(Element.Flags & GUI.SAME_LINE)) Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
 	Render.SmoothRect(x, DropdownY, DropdownWidth, DropdownHeight, DropdownBorderColorAnimated);
 	Render.SmoothRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, DropdownColorAnimated);
-	Render.StringCustom(x + 5, DropdownY + 2, 0, DropdownElements[Element.GetValue()], DropdownTextColor, GUI.Fonts.Menu);
+	Render.StringCustom(x + 5, DropdownY + 2, 0, DropdownElements[Element.Value], DropdownTextColor, GUI.Fonts.Menu);
 	Render.Polygon([[x + DropdownWidth - 5 - 6, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 + 1, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 - 3, DropdownY + DropdownHeight / 2 + 2]], DropdownBorderColorAnimated);
 	var OtherElementsActive = !GUI._SliderChanging && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0;
 	if (UI.IsCursorInBox(x, DropdownY, DropdownWidth, DropdownHeight) && OtherElementsActive && !GUI._DropdownOpened && GUI._DropdownAnimation[0] === 0){
@@ -1201,14 +1258,21 @@ GUI.Element = function(name, type){
 	this.Flags = 0;
 	if(type !== "label") GUI._ElementAnimation[this.Id] = 0;
 }
+GUI.Element.prototype.GetValue = function(){
+	return GUI.GetValue(this.Tab, this.Subtab, this.Name);
+}
+GUI.Element.prototype.SetValue = function(value){
+	GUI.SetValue(this.Tab, this.Subtab, this.Name, value);
+	return this;
+}
 GUI.Element.prototype.SetColor = function(color){
 	if(this.Type === "color" || this.Type === "checkbox")
 	GUI.SetColor(this.Tab, this.Subtab, this.Name, color);
 	return this;
 }
-GUI.Element.prototype.GetColor = function(hsv){
+GUI.Element.prototype.GetColor = function(){
 	if(this.Type === "color" || this.Type === "checkbox")
-	return GUI.GetColor(this.Tab, this.Subtab, this.Name, hsv || false);
+	return GUI.GetColor(this.Tab, this.Subtab, this.Name);
 }
 GUI.Element.prototype.master = function(master){
 	this.Master = master + this.Tab[0] + this.Subtab[0];
@@ -1221,7 +1285,8 @@ GUI.Element.prototype.submenu = function(id){
 GUI.Element.prototype.additional = function(type){
 	if(this.Type === "checkbox"){
 		if(type === "color"){
-			this.ColorHSV = true;
+			this.Color = [255, 255, 255, 255];
+			this.ColorHSV = [0, 0, 1, 255];
 		}
 		else if(type === "submenu"){
 			this.Submenu = true;
@@ -1236,79 +1301,35 @@ GUI.Element.prototype.flags = function(flags){
 GUI.AddCheckbox = function(name, index){
 	var E = new GUI.Element(name, "checkbox");
 	E.Index = index;
-	E.GetValue = function(){
-		if(typeof this.Index === "string") Cheat.Print("\n\n!!! IDIOT! YOU MESSED UP THE INDEX. IT MUST BE AN INTEGER, NOT THE FUCKING STRING !!!\n\n\n");
-		var DropdownId = Math.ceil((this.Index + 1) / 8) - 1;
-		return !!(GetVal("gui_checkboxes" + DropdownId) & (1 << this.Index - (8 * DropdownId)));
-	}
-	E.SetValue = function(value){
-		var i = GUI.Checkboxes.indexOf(this.Id);
-		var DropdownId = Math.ceil((i + 1) / 8) - 1;
-		var CheckboxesStates = GetVal("gui_checkboxes" + DropdownId);
-		var i = i - (8 * DropdownId);
-		var state = !!(CheckboxesStates & (1 << i));
-		if(state !== value) UI.SetValue(si, "gui_checkboxes" + DropdownId, CheckboxesStates + ((1 << i) * (value ? 1 : -1)));
-	}
+	E.State = false;
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
-GUI.AddSlider = function(name, min, max, defaultValue){
+GUI.AddSlider = function(name, min, max, value){
 	var E = new GUI.Element(name, "slider");
-	E.Default = defaultValue || min;
+	E.Value = value || min;
 	E.Min = min;
 	E.Max = max;
-	E.GetValue = function(){
-		return GetVal(this.Id);
-	}
-	E.SetValue = function(value){
-		UI.SetValue(si, this.Id, value);
-	}
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
 GUI.AddHotkey = function(name, defaultMode){
 	var E = new GUI.Element(name, "hotkey");
 	E.State = null;
 	E.DefaultMode = defaultMode;
-	E.GetValue = function(){
-		var modes = ["none", "hold", "toggle", "always"];
-		var val = GetVal(this.Id) + "";
-		var mode = +val.charAt(0);
-		var key = (+(val.slice(1, 4))) + "";
-		if(mode === 3) return [modes[mode], 0, "on"];
-		if(key === "0") return ["none", 0, "none"];
-		if(mode === 0) return [modes[mode], 0, "none"];
-		return [modes[mode], +key, keys[key]];
-	}
-	E.SetValue = function(value){
-		var modes = {"hold": "1", "toggle": "2"};
-		switch(value[0]){
-			case "none":
-				UI.SetValue(si, this.Id, 0);
-				return;
-			case "always":
-				UI.SetValue(si, this.Id, 3000);
-				return;
-		}
-		UI.SetValue(si, this.Id, +(modes[value[0]] + "0".repeat(3 - value[1].toString().length) + value[1]));
-	}
+	E.Mode = defaultMode || "hold";
+	E.Key = 0;
+	E.KeyName = "none";
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
 GUI.AddColor = function(name){
 	var E = new GUI.Element(name, "color");
-	E.ColorHSV = true;
+	E.Color = [255, 255, 255, 255];
+	E.ColorHSV = [0, 0, 1, 255];
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
 GUI.AddDropdown = function (name, elements) {
 	var E = new GUI.Element(name, "dropdown");
 	E.Elements = elements;
 	E.Value = 0;
-	E.GetValue = function(){
-		if (this.Flags & GUI.NOT_SAVEABLE) return this.Value; else return GetVal(this.Id);
-	}
-	E.SetValue = function(value){
-		this.Value = value;
-		if (this.Flags & GUI.NOT_SAVEABLE) return;
-		UI.SetValue(si, this.Id, value);
-	}
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
 GUI.AddLabel = function (name) {
@@ -1331,68 +1352,169 @@ GUI.GetMasterState = function(tab, subtab, name){
 	}
 	State = true;
 	var Master = GUI._MenuElements[tab][subtab][Id];
-	var Value = Master.GetValue();
-	var Mode = Value[0];
-	var Key = Value[1];
-	var KeyName = Value[2];
-	if(Master.Type === "checkbox") State = Master.GetValue();
-	if(Master.Type === "hotkey") State = (Mode !== "none" && KeyName !== "none" && Key !== 0) || (Mode === "always");
-	if(Master.Type === "dropdown") State = (Master.GetValue() == Master.Elements.indexOf(DropdownElement));
+	if(Master.Type === "checkbox") State = Master.State;
+	if(Master.Type === "hotkey") State = (Master.Mode !== "none" && Master.KeyName !== "none" && Master.Key !== 0) || (Master.Mode === "always");
+	if(Master.Type === "dropdown") State = (Master.Value == Master.Elements.indexOf(DropdownElement));
 	if(Reversed) return !State;
 	else return State;
 }
-GUI.SetValue = function(tab, subtab, name, value){
-	return GUI.GetElement(tab, subtab, name).SetValue(value);
-}
-GUI.GetValue = function(tab, subtab, name){
-	return GUI.GetElement(tab, subtab, name).GetValue();
-}
-GUI.GetElement = function(tab, subtab, nameOrId){
-	var Id = nameOrId + tab[0] + subtab[0];
-	var Element = GUI._MenuElements[tab][subtab][Id];
-	if(!Element) Element = GUI._MenuElements[tab][subtab][nameOrId];
-	return Element || Cheat.Print("Cannot find element [" + tab + ", " + subtab + ", " + nameOrId + "]\n");
-}
-GUI.GetColor = function(tab, subtab, name, hsv){
+GUI.SetValue = function(tab, subtab, name, value, setnotdef){
+	if (setnotdef === null || (typeof setnotdef) === "undefined") setnotdef = true;
 	var Id = name + tab[0] + subtab[0];
-	if(hsv === null || (typeof hsv) === "undefined") hsv = false;
 	var Element = GUI._MenuElements[tab][subtab][Id];
+	switch(Element.Type){
+		case "checkbox": {
+			var i = GUI.Checkboxes.indexOf(Id);
+			var DropdownId = Math.ceil((i + 1) / 8) - 1;
+			var CheckboxesStates = GetVal("gui_checkboxes" + DropdownId);
+			var i = i - (8 * DropdownId);
+			var state = !!(CheckboxesStates & (1 << i));
+			if(state !== value){
+				UI.SetValue(si, "gui_checkboxes" + DropdownId, CheckboxesStates + ((1 << i) * (value ? 1 : -1)));
+			}
+			GUI._MenuElements[tab][subtab][Id].State = value;
+			break;
+		}
+		case "slider": {
+			GUI._MenuElements[tab][subtab][Id].Value = value;
+			UI.SetValue(si, Id, value);
+			if (setnotdef) UI.SetValue(si, Id + "_not_def", 1);
+			break;
+		}
+		case "hotkey": {
+			var modes = {
+				"hold": "1",
+				"toggle": "2"
+			};
+			GUI._MenuElements[tab][subtab][Id].Key = value[1];
+			GUI._MenuElements[tab][subtab][Id].KeyName = keys[value[1] + ""];
+			GUI._MenuElements[tab][subtab][Id].Mode = value[0];
+			switch(value[0]){
+				case "none":
+					UI.SetValue(si, Id, 0);
+					return;
+				case "always":
+					UI.SetValue(si, Id, 3000);
+					return;
+			}
+			UI.SetValue(si, Id, +(modes[value[0]] + "0".repeat(3 - value[1].toString().length) + value[1]));
+			break;
+		}
+		case "dropdown": {
+			GUI._MenuElements[tab][subtab][Id].Value = value;
+			if (Element.Flags & GUI.NOT_SAVEABLE) return;
+			UI.SetValue(si, Id, value);
+		}
+	}
+}
+GUI.GetValue = function(tab, subtab, name, cache){
+	if(cache === null || (typeof cache) === "undefined") var cache = false;
+	var Id = name + tab[0] + subtab[0];
+	var Element = GUI._MenuElements[tab][subtab][Id];
+	if(typeof Element === "undefined") return Cheat.Print("Cannot find element [" + tab + ", " + subtab + ", " + name + "]\n");
+	switch(Element.Type){
+		case "checkbox": {
+			if(cache){
+				return Element.State;
+			}
+			if(typeof Element.Index === "string"){
+				Cheat.Print("\n\n!!! IDIOT! YOU MESSED UP THE INDEX. IT MUST BE AN INTEGER, NOT THE FUCKING STRING !!!\n\n\n");
+			}
+			var DropdownId = Math.ceil((Element.Index + 1) / 8) - 1;
+			var CheckboxesStates = GetVal("gui_checkboxes" + DropdownId);
+			var i = Element.Index - (8 * DropdownId);
+			var state = !!(CheckboxesStates & (1 << i));
+			return state;
+		}
+		case "slider": {
+			if(cache){
+				//return Element.Value;
+			}
+			var value = GetVal(Id);
+			return value;
+		}
+		case "hotkey": {
+			if(cache){
+				return [Element.Mode, Element.Key, Element.KeyName];
+			}
+			var modes = [
+				"none",
+				"hold",
+				"toggle",
+				"always"
+			];
+			var temp = GetVal(Id) + "";
+			var mode = temp.charAt(0);
+			var key = (+(temp.slice(1, 4))).toString();
+			if(key === "0"){
+				return ["none", 0, "none"];
+			}
+			switch(mode){
+				case "0":
+					return [modes[mode], 0, "none"];
+				case "3":
+					return [modes[mode], 0, "on"];
+			}
+			return [modes[mode], +key, keys[key]];
+		}
+		case "dropdown": {
+			if (Element.Flags & GUI.NOT_SAVEABLE) return GUI._MenuElements[tab][subtab][Id].Value;
+			return UI.GetValue(si, Id);
+		}
+	}
+}
+GUI.GetColor = function(tab, subtab, name, cache, hsv){
+	var Id = name + tab[0] + subtab[0];
+	var Element = GUI._MenuElements[tab][subtab][Id];
+	if(cache === null || (typeof cache) === "undefined") cache = true;
+	if(hsv === null || (typeof hsv) === "undefined") hsv = false;
+	if(cache){
+		if(hsv) return [Element.Color, Element.ColorHSV]; 
+		return Element.Color; 
+	}
 	var RGBToHSV = function(col) {
 		var g = col[1], b = col[2], a = col[3], r = col[0];
-		var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h, s = (max === 0 ? 0 : d / max), v = max / 255;
+		var max = Math.max(r, g, b), min = Math.min(r, g, b),
+			d = max - min,
+			h,
+			s = (max === 0 ? 0 : d / max),
+			v = max / 255;
+	
 		switch (max) {
 			case min: h = 0; break;
 			case r: h = (g - b) + d * (g < b ? 6: 0); h /= 6 * d; break;
 			case g: h = (b - r) + d * 2; h /= 6 * d; break;
 			case b: h = (r - g) + d * 4; h /= 6 * d; break;
 		}
+	
 		return [h, s, v, a];
 	}
 	var color = UI.GetColor(si, Id);
-	if(!hsv) return color;
-	if(Element.ColorHSV === true) Element.ColorHSV = RGBToHSV(color);
-	return [color, Element.ColorHSV];
+	return [color, RGBToHSV(color)];
 }
 GUI.SetColor = function(tab, subtab, name, value){
-	var Id = name + tab[0] + subtab[0], color;
-	if(value.length !== 2) color = value;
-	else{
-		GUI._MenuElements[tab][subtab][Id].ColorHSV = value[1];
-		color = value[0];
+	var Id = name + tab[0] + subtab[0];
+	if(value.length !== 2){
+		var color = value;
+		var hsv = GUI.Colors.RGBToHSV(color);
 	}
+	else{
+		var color = value[0];
+		var hsv = value[1];
+	}
+	var Element = GUI._MenuElements[tab][subtab][Id];
+	Element.Color = color;
+	Element.ColorHSV = hsv;
 	UI.SetColor(si, Id, color);
 }
 GUI.IsHotkeyActive = function(tab, subtab, name){
 	var Id = name + tab[0] + subtab[0];
 	var Element = GUI._MenuElements[tab][subtab][Id];
 	if (Element.State !== null) return Element.State;
-	var Value = Element.GetValue();
-	var Key = Value[1];
-	var Mode = Value[0];
-	if (Key === 0) return false;
+	if (Element.Key === 0) return false;
 	var menuopen = UI.IsMenuOpen();
-	var pressed = Input.IsKeyPressed(Key);
-	switch (Mode) {
+	var pressed = Input.IsKeyPressed(Element.Key);
+	switch (Element.Mode) {
 		case "hold":
 			return !menuopen && pressed;
 		case "toggle":
@@ -1769,9 +1891,9 @@ GUI.AddSubtab("GUI");
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
+GUI.AddCheckbox("Inverter check", 64).master("Indicators").flags(GUI.SAME_LINE)
 GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
-GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
+GUI.AddCheckbox("Indicators custom color", 63).master("Indicators").additional("color");
 GUI.AddSlider("Add y for indicators", 0, 75, 65).master("Indicators")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddDropdown("k. Style", ['default', 'skeet']).flags(GUI.SAME_LINE).master("Keybind list");
@@ -2340,7 +2462,7 @@ function mindamage(){
 		var ot_dmg = UI.GetValue("Rage", weapon.toUpperCase(), "Targeting", "Minimum damage");
 
 		//Setting default mindamage
-		if(!original_mindmg_set && orig.GetValue() !== 1 && (ot_dmg !== over.GetValue() && ot_dmg !== over2.GetValue())) orig.SetValue(ot_dmg);
+		if(!original_mindmg_set && orig.GetValue() !== 1 && (ot_dmg !== over.Value && ot_dmg !== over2.Value)) orig.SetValue(ot_dmg);
 	
 		if(active) orig.Flags = over.Flags = over2.Flags &= ~GUI.NOT_VISIBLE;
 		else orig.Flags = over.Flags = over2.Flags |= GUI.NOT_VISIBLE;
@@ -2746,16 +2868,20 @@ function legitAA(){
 		var lower_body_offset = -60 * fake_direction;
 		var current_fake_yaw = Local.GetFakeYaw();
 		var current_real_yaw = Local.GetRealYaw();
-		if (Math.abs(angle_diff(current_fake_yaw, current_real_yaw)) > 100) lower_body_offset = 180;
+		if (Math.abs(angle_diff(current_fake_yaw, current_real_yaw)) > 100) {
+			lower_body_offset = 180;
+		}
 		AntiAim.SetFakeOffset(0);
 		AntiAim.SetRealOffset(real_yaw_offset);
 		AntiAim.SetLBYOffset(lower_body_offset);
-		if (getWeaponName() == "C4") return use();
+		if (getWeaponName() == "C4") { use(); return }
 		var eyepos = Entity.GetEyePosition(local);
 		var C4 = Entity.GetEntitiesByClassID(129);
-		if (C4 && C4[0] !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) return use();
+		if (C4 !== undefined && C4[0] !== undefined && calcDist(Entity.GetRenderOrigin(C4[0]), eyepos) <= 100) { use(); return }
 		var hostages = Entity.GetEntitiesByClassID(97);
-		if (hostages && hostages.length > 0) for (hostage in hostages) if (calcDist(Entity.GetRenderOrigin(hostages[hostage]), eyepos) <= 100) return use();
+		if (hostages !== undefined && hostages.length > 0) {
+			for (hostage in hostages) if (calcDist(Entity.GetRenderOrigin(hostages[hostage]), eyepos) <= 100) { use(); return }
+		}
 	}
 	else {
 		legit_aa_active = false;
@@ -2954,10 +3080,17 @@ function radians_to_degrees(radians) { return radians * (180 / Math.PI); }
 function grenade_warning_tick() {
 	if (!GUI.GetValue("Visuals", "World", "Nade prediction") || !isAlive) return;
 	entities = Entity.GetEntitiesByClassID(9).concat(Entity.GetEntitiesByClassID(114));
-	for (var i = 0; i < entities.length; i++)
-		if (Entity.GetProp(entities[i], 'CBaseCSGrenadeProjectile', 'm_nExplodeEffectTickBegin') == 0)
-			Entity.SetProp(entities[i], "CBaseCSGrenadeProjectile", "m_nBody", Entity.GetProp(entities[i], "CBaseCSGrenadeProjectile", "m_nBody") + 1);
-	if (entities.length == 0) hits = lines = pmolotov = []
+	for (var i = 0; i < entities.length; i++) {
+		entity = entities[i]
+		if (Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_nExplodeEffectTickBegin') == 0) {
+			Entity.SetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody", Entity.GetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody") + 1)
+		}
+	}
+	if (entities.length == 0) {
+		hits = []
+		lines = []
+		pmolotov = []
+	}
 	entities = Entity.GetEntitiesByClassID(9)
 	for (var i = 0; i < entities.length; i++) {
 		entity = entities[i]
@@ -3031,12 +3164,12 @@ function grenade_warning_tick() {
 			var mx = vel[0] * 0.015
 			var my = vel[2] * 0.015
 			var mz = vel[1] * 0.015
-			Entity.SetProp(entity, 'CBaseCSGrenadeProjectile', "m_nForceBone", nade_id++)
+			Entity.SetProp(entity, 'CBaseCSGrenadeProjectile', "m_nForceBone", nade_id)
+			nade_id++
 
-			var origin = Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_vecOrigin');
-			var x = origin[0]
-			var y = origin[2]
-			var z = origin[1]
+			var x = Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_vecOrigin')[0]
+			var y = Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_vecOrigin')[2]
+			var z = Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_vecOrigin')[1]
 			var hittable = false
 			for (var i = 0; i < 130 - Entity.GetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody"); i++) {
 				my = my - 0.0712
@@ -3093,18 +3226,34 @@ function grenade_warning_tick() {
 		}
 	}
 	const contains = function (arr, contain) {
-		for (var i = 0; i < arr.length; i++) if (arr[i] == contain) return true;
+		for (var i = 0; i < arr.length; i++) {
+			var object = arr[i]
+			if (object == contain) {
+				return true
+			}
+		}
 		return false;
 	}
 	entities = Entity.GetEntitiesByClassID(9).concat(Entity.GetEntitiesByClassID(114));
 	var array = []
-	for (var i = 0; i < entities.length; i++) 
-		if (Entity.GetProp(entities[i], 'CBaseCSGrenadeProjectile', 'm_nExplodeEffectTickBegin') == 0) array.push(Entity.GetProp(entities[i], 'CBaseCSGrenadeProjectile', 'm_flAnimTime'))
-	for (var i = 0; i < hits.length; i++) if (!contains(array, hits[i][3])) hits[i][1] = 0;
-	for (var i = 0; i < lines.length; i++) if (!contains(array, lines[i][3])) lines[i][2] = 0;
-	for (var i = 0; i < pmolotov.length; i++) if (!contains(array, pmolotov[i][3])) {
-		pmolotov[i][2] = 1;
-		pmolotov[i][1] = -5;
+	for (var i = 0; i < entities.length; i++) {
+		entity = entities[i]
+		if (Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_nExplodeEffectTickBegin') == 0) array.push(Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime'))
+	}
+	for (var i = 0; i < hits.length; i++) {
+		var object = hits[i]
+		if (!contains(array, object[3]))hits[i][1] = 0;
+	}
+	for (var i = 0; i < lines.length; i++) {
+		var object = lines[i]
+		if (!contains(array, object[3])) lines[i][2] = 0;
+	}
+	for (var i = 0; i < pmolotov.length; i++) {
+		var object = pmolotov[i]
+		if (!contains(array, object[3])) {
+			pmolotov[i][2] = 1;
+			pmolotov[i][1] = -5;
+		}
 	}
 }
 
@@ -3217,10 +3366,10 @@ function renderDtCircle(x, y, col){
 	for (i = 0; i < Math.floor(length / s); i++) arr.push(s);
 	var mod = Math.floor(length % s);
 	if(mod !== 0) arr.push(mod);
-	if(arr[0]) Render.FilledRect(x + 1, y, arr[0], 2, col);
-	if(arr[1]) Render.FilledRect(x + s, y + 1, 2, arr[1], col);
-	if(arr[2]) Render.FilledRect(x - arr[2] + s + 1, y + s, arr[2], 2, col);
-	if(arr[3]) Render.FilledRect(x, y - arr[3] + s + 1, 2, arr[3], col);
+	if(arr[0] !== undefined) Render.FilledRect(x + 1, y, arr[0], 2, col);
+	if(arr[1] !== undefined) Render.FilledRect(x + s, y + 1, 2, arr[1], col);
+	if(arr[2] !== undefined) Render.FilledRect(x - arr[2] + s + 1, y + s, arr[2], 2, col);
+	if(arr[3] !== undefined) Render.FilledRect(x, y - arr[3] + s + 1, 2, arr[3], col);
 }
 
 function renderDtAndCircle(x, y, centered, c, i){
@@ -3273,22 +3422,25 @@ function indicators(){
 	if (type === 1) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? c1 : c2), font);
-			Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
+		Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? c1 : c2), font);
+		Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
+		} else {
+		Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
 		}
-		else Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
 	}
 	else if (type === 2) {
 		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-			Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? c1 : c2), font);
-			Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
+		Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? c1 : c2), font);
+		Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
+		} else {
+		Render.StringCustom(x, y, centered, "otcsync", def, font);
 		}
-		else Render.StringCustom(x, y, centered, "otcsync", def, font);
 		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
-		if (centered) Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
+		if (centered)
+		Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path];
@@ -3392,6 +3544,7 @@ function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
 	var background = [0, 0, 0, alpha / 2];
 	var colored_line_y = style ? 20 : 2;
 	var title_y = style ? 1 : 0;
+	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Keybind list"), keybind_list_alpha);
 	if(!style) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
 	Render.FilledRect(x, y + 1, info_window_width, info_window_height - 3, background);
 	Render.StringCustom(x + (style ? info_window_width / 2 : 25), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, keybind_list_alpha], font);
