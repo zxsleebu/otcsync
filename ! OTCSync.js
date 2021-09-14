@@ -194,6 +194,7 @@ GUI.InitElements = function(){
 	UI.SetValue(si, "loaded", 1);
 }
 GUI.Draw = function(){
+	UI.SetValue(si, "loaded", 1);
 	GUI.CacheVariables();
 	if(GUI.ProcessAnimations()){
 		GUI.InitFonts();
@@ -2751,7 +2752,7 @@ var block_set2 = true;
 var autopeek_active = false;
 var freestanding_bak = UI.GetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction");
 function autopeek(){
-	if(!isAlive) return;
+	if(!isAlive){if(Globals.Tickcount() > hideshots_enable_time) hideshots_enable_time = hideshots_enable_time = false; return;}
 	if(!GUI.GetValue("Rage", "General", "Auto peek helper")) return;
 	autopeek_active = isAutopeeking();
 	var dt = GUI.GetValue("Rage", "General", "Auto enable DT");
@@ -3014,7 +3015,7 @@ function betterAutoStrafer(){
 	var speed = Clamp(Convar.GetString("sv_airaccelerate") * 12);
 	UI.SetValue("Misc", "GENERAL", "Movement", "Turn speed", speed, 100, 400);
 	if(!GUI.GetValue("Misc", "General", "Auto crouch in air") || speed < 400) return;
-	UI.SetValue("Misc", "GENERAL", "Movement", "Crouch in air", +!(Entity.GetProp(local, 'CBasePlayer', 'm_fFlags') & 1));
+	UI.SetValue("Misc", "GENERAL", "Movement", "Crouch in air", (+!(Entity.GetProp(local, 'CBasePlayer', 'm_fFlags') & 1) && getVelocity(local) > 200));
 }
 
 Global.RegisterCallback("CreateMove", "betterAutoStrafer");
@@ -3262,8 +3263,8 @@ function grenade_warning_tick() {
 }
 
 function draw_warning(xzy) {
-	var x = Render.WorldToScreen(xzy[0])[0]
-	var y = Render.WorldToScreen(xzy[0])[1]
+	var x = Render.WorldToScreen(xzy[0])[0];
+	var y = Render.WorldToScreen(xzy[0])[1];
 	var color = GUI.GetColor("Visuals", "World", "Nade prediction");
 	const draw_ind = function (x, y, str, oof, xzy) {
 		var distance = Math.round(vectorDistance(Entity.GetRenderOrigin(local), xzy) / 50)
@@ -3544,10 +3545,9 @@ function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
 	var background = [0, 0, 0, alpha / 2];
 	var colored_line_y = style ? 20 : 2;
 	var title_y = style ? 1 : 0;
-	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Keybind list"), keybind_list_alpha);
 	if(!style) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
 	Render.FilledRect(x, y + 1, info_window_width, info_window_height - 3, background);
-	Render.StringCustom(x + (style ? info_window_width / 2 : 25), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, keybind_list_alpha], font);
+	Render.StringCustom(x + (style ? info_window_width / 2 : 25), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, alpha], font);
 	Render.FilledRect(x, y + info_window_height - colored_line_y, 180, 2, color);
 	if (icon !== null) Render.StringCustom(x + 6, y, 0, icon, color, iconfont);
 }
@@ -3665,11 +3665,14 @@ function spectatorList(){
 		var player = players[player];
 		if(!(player in spectators_alpha)) spectators_alpha[player] = 0;
 		var observer = Entity.GetProp(player, "DT_BasePlayer", "m_hObserverTarget");
-		var active = (observer && observer !== "m_hObserverTarget" && !Entity.IsAlive(player) && !Entity.IsDormant(player) && player !== local) && ((isAlive && observer == local) || (!isAlive && observer == Entity.GetProp(local, "DT_BasePlayer", "m_hObserverTarget")));
+		var active = ((observer && observer !== "m_hObserverTarget" && !Entity.IsAlive(player) && !Entity.IsDormant(player) && player !== local) 
+		&& ((isAlive && observer == local) || (!isAlive && observer == Entity.GetProp(local, "DT_BasePlayer", "m_hObserverTarget"))));
+		var specmode = spectator_modes[+Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")];
+		active = active && (specmode != "none");
 		if(active) visible = true;
 		if ((spectators_alpha[player] = Clamp(spectators_alpha[player] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var specs_y = specs_y - margin + Math.floor((spectators_alpha[player] / 255) * margin);
-		var mode = "[" + spectator_modes[+Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")] + "]";
+		var mode = "[" + specmode + "]";
 		var text_size = Render.TextSizeCustom(mode, font);
 		var name = rusToEng(Entity.GetName(player));
 		//if(!mustDisplayString(rusToEng(name), font, 9)) name = "Russian nickname";
@@ -3686,10 +3689,7 @@ function spectatorList(){
 
 	//Reset invalid players
 	if(World.GetServerString())
-	for(i = 0; i < spectators_alpha.length; i++){
-		s = spectators_alpha[i];
-		if(s && (!Entity.IsValid(s) || Entity.IsAlive(s) || Entity.IsDormant(s) || s === local)) spectators_alpha[i] = 0;
-	}
+	for(spec in spectators_alpha) if(spec && !Entity.IsValid(spectators_alpha[spec]) && !spectators_alpha[spec]) spectators_alpha[spec] = 0;
 
 	//api issue, can't delete
 	//tbh i can but im lazy to do a workaround :/
@@ -3858,7 +3858,7 @@ Global.RegisterCallback("CreateMove", "clantag");
 var defensive_pos = [];
 var defensiveDTClantagState = false;
 function defensiveDT(){
-	if((GUI.GetValue("Rage", "Doubletap", "DT Boost") !== 2 || !exploitsActive("dt")) || isAutopeeking()) return;
+	if((GUI.GetValue("Rage", "Doubletap", "DT Boost") !== 2 || !exploitsActive("dt")) || isAutopeeking() || !local) return;
 	var enemies = Entity.GetEnemies();
 	var ticks = GUI.GetValue("Rage", "Doubletap", "Extrapolate ticks");
 	var pos = Entity.GetHitboxPosition(local, 0);
@@ -4088,6 +4088,7 @@ Cheat.RegisterCallback("CreateMove", "freestanding");
 function resetVars(){
 	if(Entity.GetEntityFromUserID(Event.GetInt("userid")) != local) return;
 	last_leg_pos = spectators_alpha = defensive_pos = tracer_lines = pmolotov = hits = lines = last_shot_time = [];
+	hideshots_enable_time = false;
 }
 Global.RegisterCallback("player_connect_full", "resetVars");
 
@@ -4134,7 +4135,7 @@ Global.RegisterCallback("Draw", "skeletonOnHit2");
 
 //Hitmarker
 var hitShots = [];
-const hitgroup_to_hitbox = {1: 0, 2: 5, 3: 2, 4: 13, 5: 14, 6: 12, 7: 11};
+const hitgroup_to_hitbox = {0: 3, 1: 0, 2: 5, 3: 2, 4: 13, 5: 14, 6: 12, 7: 11};
 function hitShotsHandle(){
 	var hitmarkerEnabled = GUI.GetValue("Visuals", "Players", "Hit marker");
 	var damageMarkerEnabled = GUI.GetValue("Visuals", "Players", "Damage marker");
@@ -4181,7 +4182,10 @@ function hitShotsHandle(){
 }
 function addHitShot(){
 	if(!GUI.GetValue("Visuals", "Players", "Damage marker") && !GUI.GetValue("Visuals", "Players", "Hit marker")) return;
-	var hitbox = Entity.GetHitboxPosition(Entity.GetEntityFromUserID(Event.GetInt("userid")), hitgroup_to_hitbox[Event.GetInt("hitgroup")] != undefined ? hitgroup_to_hitbox[Event.GetInt("hitgroup")] : 3);
+	var entity = Entity.GetEntityFromUserID(Event.GetInt("userid"));
+	var group = Event.GetInt("hitgroup");
+	var hitboxId = (hitgroup_to_hitbox[group] || hitgroup_to_hitbox[group] === 0) ? hitgroup_to_hitbox[group] : 3;
+	var hitbox = Entity.GetHitboxPosition(entity, +hitboxId);
 	if (Entity.GetEntityFromUserID(Event.GetString("attacker")) == Entity.GetLocalPlayer())
 		hitShots.push([Event.GetInt("dmg_health"), hitbox, 0, Math.floor(Math.random() * Math.floor(30))]);
 }
@@ -4191,13 +4195,12 @@ Global.RegisterCallback("Draw", "hitShotsHandle");
 var hideshots_enable_time = false;
 function autoPeekHelperHSTP(){
 	if(!GUI.GetValue("Rage", "General", "Auto peek helper") || !isAutopeeking()) return;
-	if(Entity.GetEntityFromUserID(Event.GetInt("userid")) !== local) return;
-	if(!exploitsActive("hs")) return;
+	if(!exploitsActive("hs") || Event.GetInt("exploit") !== 1) return;
 	if (UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Hide shots")) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Hide shots");
 	GUI.OverrideState("Misc", "Keybinds fixer", "Hide shots", false);
 	hideshots_enable_time = Globals.Tickcount() + 32;
 }
-Global.RegisterCallback("weapon_fire", "autoPeekHelperHSTP");
+Global.RegisterCallback("ragebot_fire", "autoPeekHelperHSTP");
 
 //Clean up
 Duktape.gc();
