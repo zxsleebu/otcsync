@@ -85,6 +85,7 @@ var GUI = Duktape.compact({
 	SAME_LINE: (1 << 1),
 	NOT_SAVEABLE: (1 << 2),
 	CHECKBOX_VIEW: (1 << 3),
+	NO_DEFAULT: (1 << 4),
 });
 GUI.Init = function(name){
 	GUI.LogoText = name;
@@ -108,8 +109,9 @@ GUI.InitElements = function(){
 						break;
 					case "slider":
 						UI.AddSliderInt(Element, Elem.Min, Elem.Max);
-						UI.AddCheckbox(Element + "_not_def")
 						UI.SetEnabled(si, Element, 0);
+						if(Elem.Flags & GUI.NO_DEFAULT) break;
+						UI.AddCheckbox(Element + "_not_def")
 						UI.SetEnabled(si, Element + "_not_def", 0);
 						if (!UI.GetValue(si, Element + "_not_def")) UI.SetValue(si, Element, Elem.Value);
 						break;
@@ -374,7 +376,7 @@ GUI.DrawSubtabList = function(){
 			var SubtabActiveColor = GUI.Colors.AnimateBackground(GUI.Colors.FadeColor(GUI.Colors.SubtabList, GUI.Colors.SubtabListActive, GUI._MenuAnimation[4]));
 			Render.FilledRect(GUI.X, SubtabY, GUI.SubtabListWidthScaled, SubtabHeight, SubtabActiveColor);
 		}
-		Render.StringCustom(GUI.X + 14, SubtabY + GUI.Scale(10), 0, SubtabName, SubtabTextColor, GUI.Fonts.SubtabText);
+		Render.StringCustom(GUI.X + GUI.Scale(14), SubtabY + GUI.Scale(10), 0, SubtabName, SubtabTextColor, GUI.Fonts.SubtabText);
 		if (UI.IsCursorInBox(GUI.X, SubtabY, GUI.SubtabListWidthScaled, SubtabHeight) && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened){
 			GUI._SubtabAnimations[SubtabName] += 0.04;
 			if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._SliderChanging){
@@ -517,23 +519,11 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 	if(CheckboxState){
 		var ElementEndX = Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4);
-		if(Element.Color !== undefined){
-			GUI.DrawColor(ElementEndX, y, name, id, true);
-		}
+		if(Element.Color !== undefined) GUI.DrawColor(ElementEndX, y, name, id, true);
 		else if(Element.Submenu !== undefined){
 			var x = ElementEndX + GUI.Scale(4);
 			var y = y + GUI.Scale(21);
-			var w = 2 * parseInt(GUI.Scale(4) / 2);
-			var h = 2 * parseInt(GUI.Scale(6) / 2);
-			var color = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.FadeColor(GUI.Colors.ArrowColor, GUI.Colors.Text, GUI._SubmenuTriggerAnimations[id]), Animation, GUI._MenuAnimation[1] * 255);
-			if(UI.IsCursorInBox(x - w * 2, y - h - 1, w * 5, h * 3 + 2)){
-				GUI._SubmenuTriggerAnimations[id] += 0.06;
-			}
-			else{
-				GUI._SubmenuTriggerAnimations[id] -= 0.06;
-			}
-			GUI._SubmenuTriggerAnimations[id] = Clamp(GUI._SubmenuTriggerAnimations[id], 0, 1);
-			GUI.DrawRightArrow(x, y, w, h, color);
+			//GUI.DrawSubmenu(x, y, id);
 		}
 	}
 }
@@ -621,7 +611,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	}
 	if (Element.Key == 0) KeyName = "none";
 	var HotkeyKeyNameTextSize = Render.TextSizeCustom(KeyName, GUI.Fonts.HotkeyKeyName);
-	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] * GUI.Scale(1.1) + 2, 14, 100));
+	var HotkeyWidth = GUI.Scale(Clamp(HotkeyKeyNameTextSize[0] / (GUI._Scale / 1.1) + 2, 14, 100));
 	var HotkeyX = HotkeyTextX + GUI.ContainerWidth - HotkeyWidth;
 
 	var HotkeyMenuWidth = GUI.Scale(40);
@@ -892,9 +882,9 @@ GUI.DrawColorPicker = function(){
 	}
 }
 GUI.DrawColorMenu = function(){
-	var ColorMenuWidth = 40;
-	var ColorMenuElementsHeight = 14;
-	var ColorMenuElementsMargin = 4;
+	var ColorMenuWidth = GUI.Scale(40);
+	var ColorMenuElementsHeight = GUI.Scale(14);
+	var ColorMenuElementsMargin = GUI.Scale(4);
 	var ColorMenuElements = ["copy", "paste"];
 	var ColorMenuHeight = (ColorMenuElements.length * ColorMenuElementsHeight) + ((ColorMenuElements.length - 1) * ColorMenuElementsMargin) + 4;
 
@@ -1064,6 +1054,52 @@ GUI.DrawLabel = function(x, y, name){
 	var TextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	Render.StringCustom(x, y + GUI.Scale(12) + 2.6, 0, name, TextColor, GUI.Fonts.Menu);
 }
+/*GUI.DrawSubmenu = function(x, y, id){
+	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
+	var w = 2 * parseInt(GUI.Scale(4) / 2);
+	var h = 2 * parseInt(GUI.Scale(6) / 2);
+	if(UI.IsCursorInBox(x - w * 2, y - h - 1, w * 5, h * 3 + 2)){
+		GUI._SubmenuTriggerAnimations[id] += 0.06;
+		if(Input.IsKeyPressed(1)){
+			GUI._SubmenuOpened = id;
+			GUI._SubmenuActive = id;
+		}
+	}
+	else GUI._SubmenuTriggerAnimations[id] -= 0.06;
+	
+	GUI._SubmenuTriggerAnimations[id] = Clamp(GUI._SubmenuTriggerAnimations[id], 0, 1);
+	var color = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.FadeColor(GUI.Colors.ArrowColor, GUI.Colors.Text, GUI._SubmenuTriggerAnimations[id]), Animation, GUI._MenuAnimation[1] * 255);
+	GUI.DrawRightArrow(x, y, w, h, color);
+	if (GUI._SubmenuOpened !== false) {
+		GUI._SubmenuAnimations[0] += 0.06;
+		if (GUI._SubmenuAnimations[0] >= 0.8) GUI._SubmenuAnimations[1] += 0.06;
+	}
+	else {
+		GUI._SubmenuAnimations[1] -= 0.06;
+		if (GUI._SubmenuAnimations[1] <= 0.2) GUI._SubmenuAnimations[0] -= 0.06;
+	}
+	GUI._SubmenuAnimations[0] = Clamp(GUI._SubmenuAnimations[0], 0, 1);
+	GUI._SubmenuAnimations[1] = Clamp(GUI._SubmenuAnimations[1], 0, 1);
+
+	if(GUI._SubmenuAnimations[0] === 0) return;
+	var Subtab = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab];
+	if(!(GUI._SubmenuActive in Subtab)) return;
+
+	var Height = 32;
+	var Width = 200;
+	for(Element in Subtab){
+		Element = Subtab[Element];
+		if(Element.SubmenuMaster === undefined) continue;
+		var ElementX = GUI.X + GUI.SubtabListWidthScaled + 16;
+		if(Element.Flags & GUI.SAME_LINE) Height -= GUI.Scale(GUI._ElementOffsets[Element.Type]); //CurrentSubtab[ElementIds[i - 1]].Type
+		ElementOffsetY += GUI.Scale(GUI._ElementOffsets[Element.Type]);
+	}
+
+	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._SubmenuAnimations[0];
+	var SecondaryAnimation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._SubmenuAnimations[1];
+	var ColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, Animation));
+	var HeightAnimated = Easing(0, Height, Animation);
+}*/
 GUI.ProcessDrag = function(){
 	if(!UI.IsMenuOpen()) return;
 	var HeaderLogoSize = Render.TextSizeCustom(GUI.LogoText, GUI.Fonts.HeaderLogo);
@@ -1750,7 +1786,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 63
+//Last index is 64
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1773,24 +1809,24 @@ GUI.AddSubtab("Min-DMG Override");
 var dmg_el_name = GUI.AddHotkey("Min-damage override", "hold").Name;
 GUI.AddHotkey("Min-damage override 2", "hold").master(dmg_el_name);
 GUI.AddDropdown("Min-DMG weapon groups", ["General", "Pistol", "Heavy Pistol", "Scout", "AWP", "Auto"]).master(dmg_el_name).flags(GUI.NOT_SAVEABLE);
-GUI.AddSlider("General Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Heavy Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Scout Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("AWP Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Auto Original Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("General Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Heavy Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Scout Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("AWP Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("Auto Override Min-DMG", 1, 130, 1).master(dmg_el_name);
-GUI.AddSlider("General Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Heavy Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Scout Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("AWP Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
-GUI.AddSlider("Auto Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2");
+GUI.AddSlider("General Original Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Heavy Pistol Original Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Scout Original Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("AWP Original Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Auto Original Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("General Override Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Heavy Pistol Override Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Scout Override Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("AWP Override Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Auto Override Min-DMG", 1, 130, 1).master(dmg_el_name).flags(GUI.NO_DEFAULT);
+GUI.AddSlider("General Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Heavy Pistol Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Scout Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
+GUI.AddSlider("AWP Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
+GUI.AddSlider("Auto Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
 
 GUI.AddSubtab("Safe points");
 GUI.AddCheckbox("Safe points on limbs", 5);
@@ -1819,15 +1855,14 @@ GUI.AddSubtab("General");
 GUI.AddHotkey("Lowdelta", "hold");
 GUI.AddHotkey("Freestanding", "toggle");
 GUI.AddCheckbox("Legit AA on E", 11);
-GUI.AddCheckbox("Legbreaker", 12);
 GUI.AddDropdown("Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
 GUI.AddCheckbox("Auto invert", 49);
-GUI.AddCheckbox("Adaptive jitter", 58);
 GUI.AddCheckbox("No desync on DT", 62);
-GUI.AddSlider("Legbreaker speed", 1, 5, 2).master("Legbreaker");
 
 GUI.AddSubtab("AA Presets");
 GUI.AddDropdown("Preset", ["None", "Desync Jitter", "Desync Sway", "LavaWalk"]);
+GUI.AddCheckbox("Adaptive jitter", 58);
+GUI.AddSlider("Strength", 1, 10, 5).master("Adaptive jitter");
 
 GUI.AddSubtab("Slowwalk");
 GUI.AddCheckbox("Custom slowwalk", 14);
@@ -1844,6 +1879,10 @@ GUI.AddCheckbox("No fake lag on nades", 18);
 GUI.AddSubtab("Matchmaking FD");
 GUI.AddCheckbox("Matchmaking FD", 19);
 
+GUI.AddSubtab("Other");
+GUI.AddCheckbox("Legbreaker", 12);
+GUI.AddSlider("Legbreaker speed", 2, 6, 4).master("Legbreaker");
+
 GUI.AddTab("Visuals", "C");
 
 GUI.AddSubtab("World");
@@ -1852,6 +1891,7 @@ GUI.AddSlider("World brightness", -50, 0, 0);
 GUI.AddCheckbox("Nade prediction", 27).additional("color");
 GUI.AddCheckbox("Line tracer", 61).master("Nade prediction").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Trail", 29).additional("color");
+GUI.AddCheckbox("Party Zeus", 21);
 
 GUI.AddSubtab("Players");
 GUI.AddCheckbox("Hit marker", 63).additional("color");
@@ -1880,28 +1920,28 @@ GUI.AddDropdown("CT Knife", knife_list).master("Knife changer");
 
 GUI.AddSubtab("Other");
 GUI.AddCheckbox("Better scope", 28).additional("color");
+GUI.AddCheckbox("Reversed gradient", 64).flags(GUI.SAME_LINE).master("Better scope");
 GUI.AddSlider("Better scope weight", 1, 6, 2).master("Better scope");
 GUI.AddSlider("Better scope length", 0, 100, 14).master("Better scope");
 GUI.AddSlider("Better scope offset", 0, 100, 12).master("Better scope");
-GUI.AddCheckbox("Party Zeus", 21);
+GUI.AddCheckbox("Better 3rd person", 42);
+GUI.AddLabel("Bind in Keybinds fixer").master("Better 3rd person").flags(GUI.SAME_LINE);
+GUI.AddSlider("Thirdperson distance", 50, 150, 0).master("Better 3rd person");
+GUI.AddSlider("Aspect ratio", 0, 250, 0);
 
-GUI.AddSubtab("Extra");
-GUI.AddCheckbox("Custom thirdperson", 42);
-GUI.AddSlider("Thirdperson distance", 50, 300, 0).master("Custom thirdperson");
-GUI.AddSlider("Aspect ratio", 0, 300, 0);
-
-GUI.AddSubtab("GUI");
-GUI.AddCheckbox("Watermark", 31).additional("color");
+GUI.AddSubtab("Indicators");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
 GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
 GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
-GUI.AddSlider("Add y for indicators", 0, 75, 65).master("Indicators")
+GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
+
+GUI.AddSubtab("GUI");
+GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI']);
+GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
-GUI.AddDropdown("k. Style", ['default', 'skeet']).flags(GUI.SAME_LINE).master("Keybind list");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
-GUI.AddDropdown("w. Style", ['default', 'skeet']).flags(GUI.SAME_LINE).master("Spectator list");
 GUI.AddCheckbox("Hit logs", 35).additional("color");
 GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']);
 GUI.AddColor("Menu accent");
@@ -2031,10 +2071,7 @@ function getWeaponName(){
 }
 function isInAir(){
 	var fv = Entity.GetProp(local, "CBasePlayer", "m_flFallVelocity");
-	if(fv < -1 || fv > 1){
-		return true;
-	}
-	return false;
+	return (fv < -1 || fv > 1);
 }
 function getVelocity(player){
 	var velocity = Entity.GetProp(player, "CBasePlayer", "m_vecVelocity[0]");
@@ -2515,12 +2552,12 @@ var legbreaker_delay = 0;
 var fakelag_leg = false;
 function legbreaker(){
 	if(!isAlive) return;
-	var legbreaker = GUI.GetValue("Anti-Aim", "General", "Legbreaker");
+	var legbreaker = GUI.GetValue("Anti-Aim", "Other", "Legbreaker");
 	if(!legbreaker) return;
 	var legmovement = UI.GetValue("Misc", "GENERAL", "Movement", "Slide walk");
 	if (UI.GetValue("Misc", "GENERAL", "Movement", "Accurate walk")) UI.SetValue("Misc", "GENERAL", "Movement", "Accurate walk", 0);
 	//UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", ChokedCommands() == 0);
-	if(legbreaker_delay++ > GUI.GetValue("Anti-Aim", "General", "Legbreaker speed")){
+	if(legbreaker_delay++ > GUI.GetValue("Anti-Aim", "Other", "Legbreaker speed")){
 		if(legmovement === 0){
 			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1);
 			UI.SetValue("Anti-Aim", "Extra", "Jitter move", 0);
@@ -2653,14 +2690,34 @@ function worldBrightness(){
 Global.RegisterCallback("CreateMove", "worldBrightness");
 
 function aspectRatio(){
-	Convar.SetString("r_aspectratio", (GUI.GetValue("Visuals", "Extra", "Aspect ratio") / 100).toString());
+	Convar.SetString("r_aspectratio", (GUI.GetValue("Visuals", "Other", "Aspect ratio") / 100).toString());
 }
 
 Global.RegisterCallback("Draw", "aspectRatio");
 
+var thirdperson = 0, thirdperson_turned = 1;
 function customThirdperson(){
-	if(!GUI.GetValue("Visuals", "Extra", "Custom thirdperson")) return;
-	UI.SetValue("Visual", "WORLD", "View", "Thirdperson", GUI.GetValue("Visuals", "Extra", "Thirdperson distance"));
+	if(!GUI.GetValue("Visuals", "Other", "Better 3rd person")) return;
+    var thirdperson_cache = GUI.GetValue("Visuals", "Other", "Thirdperson distance"),
+    hotkey_state = GUI.IsHotkeyActive("Misc", "Keybinds fixer", "Thirdperson"),
+    fade_factor = (((1 * (thirdperson_cache / 100))) / .0025) * Globals.Frametime()
+    if(hotkey_state && thirdperson != 1 && isAlive)
+	thirdperson = Clamp(thirdperson - fade_factor, 49, thirdperson_cache)
+    if(!hotkey_state && thirdperson != 0 || !isAlive)
+	thirdperson = Clamp(thirdperson + fade_factor, 49, thirdperson_cache)
+    if(hotkey_state && thirdperson == 49 && thirdperson_turned) {
+        UI.ToggleHotkey("Visuals", "WORLD", "View", "Thirdperson")
+        thirdperson_turned = 0
+    }
+
+    if(!hotkey_state && thirdperson > 49 && !thirdperson_turned) {
+        UI.ToggleHotkey("Visuals", "WORLD", "View", "Thirdperson")
+        thirdperson_turned = 1
+    }
+
+    if(thirdperson_turned && !UI.IsHotkeyActive("Visuals", "WORLD", "View", "Thirdperson") || !thirdperson_turned && UI.IsHotkeyActive("Visuals", "WORLD", "View", "Thirdperson"))
+        UI.ToggleHotkey("Visuals", "WORLD", "View", "Thirdperson")
+    if(thirdperson != 0) UI.SetValue("Visuals", "WORLD", "View", "Thirdperson", thirdperson);
 }
 
 Global.RegisterCallback("CreateMove", "customThirdperson");
@@ -3034,6 +3091,11 @@ function betterScope() {
 	var off = Math.floor(sizeX / 2 + GUI.GetValue("Visuals", "Other", "Better scope offset"));
 	var c2 = GUI.GetColor("Visuals", "Other", "Better scope");
 	var c1 = [c2[0], c2[1], c2[2], 0];
+	if(GUI.GetValue("Visuals", "Other", "Reversed gradient")){
+		var temp = [].concat(c2);
+		c2 = c1;
+		c1 = temp;
+	}
 	renderScopeLine(startX - off, startY, sizeX, sizeY, 1, c1, c2);
 	renderScopeLine(startX + off, startY, sizeX, sizeY, 1, c2, c1);
 	renderScopeLine(startX, startY - off, sizeY, sizeX, 0, c1, c2);
@@ -3400,7 +3462,7 @@ var indicators_paths = [
 	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
 ]	
 function indicators(){
-	if(!GUI.GetValue("Visuals", "GUI", "Indicators") || !isAlive) return;
+	if(!GUI.GetValue("Visuals", "Indicators", "Indicators") || !isAlive) return;
 	if(Input.IsKeyPressed(27)) local_buymenu_opened = false;
 	var aa = (GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta") ? "LOW DELTA" :
 	(isLegitAAActive() ? "LEGIT AA" :
@@ -3412,11 +3474,11 @@ function indicators(){
 	var margin = 10
 	var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
 	var x = ScreenSize[0] / 2;
-	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "GUI", "Add y for indicators");
-	var centered = +GUI.GetValue("Visuals", "GUI", "Indicators centered");
-	var type = GUI.GetValue("Visuals", "GUI", "Indicators type");
-	var inv = GUI.GetValue("Visuals", "GUI", "Inverter check")
-	var custom_color = (GUI.GetValue("Visuals", "GUI", "Indicators custom color") ? GUI.GetColor("Visuals", "GUI", "Indicators custom color") : false);
+	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "Indicators", "Indicators Y offset");
+	var centered = +GUI.GetValue("Visuals", "Indicators", "Indicators centered");
+	var type = GUI.GetValue("Visuals", "Indicators", "Indicators type");
+	var inv = GUI.GetValue("Visuals", "Indicators", "Inverter check")
+	var custom_color = (GUI.GetValue("Visuals", "Indicators", "Indicators custom color") ? GUI.GetColor("Visuals", "Indicators", "Indicators custom color") : false);
 	var def = [custom_color[0] || 193, custom_color[1] || 199, custom_color[2] || 255, anim]
 	real_yaw = Local.GetRealYaw();
 	fake_yaw = Local.GetFakeYaw();
@@ -3529,6 +3591,7 @@ function keybindFixer() {
 	for (keybind in keybinds) {
 		keybind = keybinds[keybind];
 		if (!GUI.GetMasterState.apply(null, keybind[0])) continue;
+		if(keybind[0][2] === "Thirdperson" && GUI.GetValue("Visuals", "Other", "Better 3rd person")) continue;
 		var keybind_state = GUI.IsHotkeyActive.apply(null, keybind[0]);
 		var original_state = UI.IsHotkeyActive.apply(null, keybind[1]);
 		if ((!keybind_state && original_state) || (keybind_state && !original_state)) UI.ToggleHotkey.apply(null, keybind[1]);
@@ -3582,7 +3645,7 @@ var keybinds_paths = [
 ];
 function keybindList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
-	var style = GUI.GetValue("Visuals", "GUI", "k. Style");
+	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var visible = false;
 	var speed = 14;
 	var margin = 15;
@@ -3657,7 +3720,7 @@ function spectatorList(){
 	var margin = 15;
 	var specs_y = spectator_list_y + 21;
 	var players = Entity.GetPlayers();
-	var style = GUI.GetValue("Visuals", "GUI", "w. Style")
+	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	
 	if(World.GetServerString())
@@ -3733,7 +3796,7 @@ function watermark(){
 	watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255);
 	if (watermark_alpha == 0) return;
 	var font = Render.AddFont("Segoe UI Semilight", 9, 200);
-	var y = 3;
+	var y = 4;
 	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Watermark"), watermark_alpha);
 	var elemets = ["     " + GUI.LogoText.toLowerCase()];
 	elemets.push(rusToEng(Cheat.GetUsername()));
@@ -3750,7 +3813,7 @@ function watermark(){
 	var text_size = Render.TextSizeCustom(text, font);
 	var width = text_size[0] + 9;
 	var height = 19;
-	var x = ScreenSize[0] - width - 2;
+	var x = ScreenSize[0] - width - 4;
 	var background = [0, 0, 0, watermark_alpha / 2];
 	Render.FilledRect(x + 1, y, width - 2, 1, color);
 	Render.FilledRect(x, y + 1, width, 1, color);
@@ -4008,14 +4071,15 @@ function knifeChanger(){
 Global.RegisterCallback("Draw", "knifeChanger");
 
 function adaptiveJitter(){
-	if(!GUI.GetValue("Anti-Aim", "General", "Adaptive jitter")) return;
+	if(!GUI.GetValue("Anti-Aim", "AA Presets", "Adaptive jitter")) return;
 	if (!isAlive) return;
 	var f = UI.GetValue("Anti-Aim", "Fake angles", "Enabled") || AntiAim.GetOverride();
+	var s = 15 - GUI.GetValue("Anti-Aim", "AA Presets", "Strength");
 	var min = 15;
 	var max = (f ? 45 : 60);
 	var v = getVelocity(local);
 	var t = (Math.ceil(Globals.Tickcount() / 3) % 2);
-	var a = Clamp(Math.ceil(v / (f ? 8 : 4)), min, max);
+	var a = Clamp(Math.ceil(v / (f ? s : 4)), min, max);
 	var d = (f ? 10 : 30);
 	if(isSlowwalking()) a = Clamp(a + d, min, max);
 	if (isInAir() || Input.IsKeyPressed(0x20)) a = Clamp(a + d, min, max - (f ? 15 : 10));
