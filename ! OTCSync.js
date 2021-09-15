@@ -3156,16 +3156,14 @@ function grenade_warning_tick() {
 			Entity.SetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody", Entity.GetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody") + 1)
 		}
 	}
-	if (entities.length == 0) lines = pmolotov = hits = [];
+	if (entities.length == 0) lines = [], pmolotov = [], hits = [];
 	entities = Entity.GetEntitiesByClassID(9)
 	for (var i = 0; i < entities.length; i++) {
 		entity = entities[i]
 		var vel = Entity.GetProp(entity, 'CBaseGrenade', 'm_vecVelocity');
 		if (Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime') != Math.round(vel[0]) && Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_nExplodeEffectTickBegin') == 0) {
 			Entity.SetProp(entity, 'CBaseCSGrenade', 'm_flAnimTime', Math.round(vel[0]))
-			var mx = vel[0] * 0.015
-			var my = vel[2] * 0.015
-			var mz = vel[1] * 0.015
+			var mx = vel[0] * 0.015, my = vel[2] * 0.015, mz = vel[1] * 0.015
 			Entity.SetProp(entity, 'CBaseCSGrenadeProjectile', "m_nForceBone", nade_id)
 			nade_id++
 			var x = Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_vecOrigin')[0]
@@ -3186,12 +3184,7 @@ function grenade_warning_tick() {
 					var res = 0
 					res = Trace.Line(entity, h[0], h[1])[1]
 					if (res != 1) {
-						var ny = h[0][2] + 10
-						var nx = h[1][0]
-						var nz = h[1][1]
-						var fny = h[0][2]
-						var fnx = h[1][0]
-						var fnz = h[1][1]
+						var ny = h[0][2] + 10, nx = h[1][0], nz = h[1][1], fny = h[0][2], fnx = h[1][0], fnz = h[1][1]
 						vres = Trace.Line(entity, [fnx, fnz, fny], [nx, nz, ny])[1]
 						var start = [x, z, y]
 						var end = [x - mx, z - mz, y - 30]
@@ -3201,9 +3194,7 @@ function grenade_warning_tick() {
 							hit = [x + mx * (res), z + mz * (res), y + my * (res)]
 							break;
 						} else {
-							my = my * -0.45
-							mx = mx * 0.45
-							mz = mz * 0.45
+							my = my * -0.45, mx = mx * 0.45, mz = mz * 0.45;
 							break
 						}
 					}
@@ -3213,9 +3204,7 @@ function grenade_warning_tick() {
 					break;
 				}
 				lines.push([[x, z, y], [x + mx, z + mz, y + my], Globals.Tickcount() + i, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')]);
-				x = x + mx
-				y = y + my
-				z = z + mz
+				x = x + mx, y = y + my, z = z + mz
 			}
 			if (!hittable) hits.push([[x, z, y], Globals.Tickcount() + i, false, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime'), Globals.Tickcount()])
 		}
@@ -3227,9 +3216,7 @@ function grenade_warning_tick() {
 		var vel = Entity.GetProp(entity, 'CBaseGrenade', 'm_vecVelocity');
 		if (Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime') != Math.round(vel[0]) && Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_nExplodeEffectTickBegin') == 0) {
 			Entity.SetProp(entity, 'CBaseCSGrenade', 'm_flAnimTime', Math.round(vel[0]))
-			var mx = vel[0] * 0.015
-			var my = vel[2] * 0.015
-			var mz = vel[1] * 0.015
+			var mx = vel[0] * 0.015, my = vel[2] * 0.015, mz = vel[1] * 0.015
 			Entity.SetProp(entity, 'CBaseCSGrenadeProjectile', "m_nForceBone", nade_id)
 			nade_id++
 
@@ -3251,12 +3238,7 @@ function grenade_warning_tick() {
 					var res = 0
 					res = Trace.Line(entity, h[0], h[1])[1]
 					if (res != 1) {
-						var ny = h[0][2] + 10
-						var nx = h[1][0]
-						var nz = h[1][1]
-						var fny = h[0][2]
-						var fnx = h[1][0]
-						var fnz = h[1][1]
+						var ny = h[0][2] + 10, nx = h[1][0], nz = h[1][1], fny = h[0][2], fnx = h[1][0], fnz = h[1][1]
 						vres = Trace.Line(entity, [fnx, fnz, fny], [nx, nz, ny])[1]
 						var start = [x, z, y]
 						var end = [x - mx, z - mz, y - 20]
@@ -3272,9 +3254,7 @@ function grenade_warning_tick() {
 								hits.push([[x, z, y], Globals.Tickcount() + i, true, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')])
 								return
 							}
-							my = my * -0.45
-							mx = mx * 0.45
-							mz = mz * 0.45
+							my = my * -0.45, mx = mx * 0.45, mz = mz * 0.45
 							break
 						}
 					}
@@ -3284,9 +3264,7 @@ function grenade_warning_tick() {
 					break;
 				}
 				lines.push([[x, z, y], [x + mx, z + mz, y + my], Globals.Tickcount() + i, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime')])
-				x = x + mx
-				y = y + my
-				z = z + mz
+				x = x + mx, y = y + my, z = z + mz;
 			}
 			if (!hittable) hits.push([[x, z, y], Globals.Tickcount() + i, true, Entity.GetProp(entity, 'CBaseCSGrenadeProjectile', 'm_flAnimTime'), Globals.Tickcount()])
 		}
@@ -3729,9 +3707,10 @@ function spectatorList(){
 	for (player in players) {
 		var player = players[player];
 		if(!(player in spectators_alpha)) spectators_alpha[player] = 0;
+		if(player === local) continue;
 		var observer = Entity.GetProp(player, "DT_BasePlayer", "m_hObserverTarget");
-		var active = ((observer && observer !== "m_hObserverTarget" && !Entity.IsAlive(player) && !Entity.IsDormant(player) && player !== local) 
-		&& ((isAlive && observer == local) || (!isAlive && observer == Entity.GetProp(local, "DT_BasePlayer", "m_hObserverTarget"))));
+		var active = player && !Entity.IsAlive(player) && (observer && observer !== "m_hObserverTarget");
+		active = active && (isAlive ? (observer === local) : (observer == Entity.GetProp(local,"DT_BasePlayer","m_hObserverTarget")));
 		var specmode = spectator_modes[+Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")];
 		active = active && (specmode != "none");
 		if(active) visible = true;
@@ -3740,7 +3719,6 @@ function spectatorList(){
 		var mode = "[" + specmode + "]";
 		var text_size = Render.TextSizeCustom(mode, font);
 		var name = rusToEng(Entity.GetName(player));
-		//if(!mustDisplayString(rusToEng(name), font, 9)) name = "Russian nickname";
 		Render.StringCustom(spectator_list_x + 3, specs_y, 0, name, GUI.Colors.GetColor([255, 255, 255], spectators_alpha[player]), font);
 		Render.StringCustom(spectator_list_x + info_window_width - text_size[0] - 1, specs_y, 0, mode, GUI.Colors.GetColor([255, 255, 255], spectators_alpha[player]), font);
 		specs_y += margin;
