@@ -22,7 +22,7 @@ const si = "Script items";
 var GUI = Duktape.compact({
 	BackgroundOpacity: 0,
 	TextOpacity: 0,
-	AnimationSpeed: 1,
+	AnimationSpeed: 90,
 	X: 100,
 	Y: 100,
 	Width: 490,
@@ -233,13 +233,14 @@ GUI.DrawMenu = function(){
 	}
 }
 GUI.DrawTabList = function(){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var TabNames = Object.keys(GUI._MenuElements);
 	var TabY = GUI.Y + GUI.Scale(GUI.Height * 0.45);
 	var TabWidth = GUI.Scale(80);
 	var TabHeight = TabWidth;
 	var TabMargin = GUI.Scale(18);
 	var TabStart = (GUI.Scale(GUI.Width) - ((TabWidth + TabMargin) * TabNames.length)) / 2;
-	var TabFadeSpeed = 0.04 * GUI.AnimationSpeed;
+	var TabFadeSpeed = 0.04 * adapt;
 	for(TabName in GUI._MenuElements){
 		if(GUI._MenuAnimation[2] >= 0.95) break;
 		if (TabName === GUI.ActiveTab) continue;
@@ -247,6 +248,7 @@ GUI.DrawTabList = function(){
 		var TabX = GUI.X + TabStart + TabMargin / 2 + ((TabWidth + TabMargin) * Index);
 		
 		GUI.DrawTab(TabX, TabY, TabWidth, TabHeight, TabName);
+		Render.FilledRect(TabX - 1, TabY, 1, TabHeight, GUI.Colors.AnimateBackground(GUI.Colors.Background));
 		if(UI.IsCursorInBox(TabX, TabY, TabWidth, TabHeight)){
 			if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._MenuIsMoving){
 				GUI._MenuAnimation[4] = 0;
@@ -283,14 +285,14 @@ GUI.DrawTabList = function(){
 		if(!GUI._AnimatingBack){
 			GUI._TabAnimations[GUI.ActiveTab][0] = Clamp(GUI._TabAnimations[GUI.ActiveTab][0] + TabFadeSpeed * 2, 0, 1);
 			GUI._TabAnimations[GUI.ActiveTab][1] = Clamp(GUI._TabAnimations[GUI.ActiveTab][1] + TabFadeSpeed * 2, 0, 1);
-			if(GUI._MenuAnimation[2] >= 1) GUI._MenuAnimation[3] += 0.05 * GUI.AnimationSpeed;
-			else GUI._MenuAnimation[2] += 0.05 * GUI.AnimationSpeed;
+			if(GUI._MenuAnimation[2] >= 1) GUI._MenuAnimation[3] += 0.05 * adapt;
+			else GUI._MenuAnimation[2] += 0.05 * adapt;
 		}
 		if(GUI._MenuAnimation[3] < 1) GUI.DrawTab(ActiveTabX, ActiveTabY, ActiveTabWidth, ActiveTabHeight, GUI.ActiveTab);
 	}
 	if(GUI._AnimatingBack){
-		GUI._MenuAnimation[3] -= 0.05 * GUI.AnimationSpeed;
-		if(GUI._MenuAnimation[3] <= 0) GUI._MenuAnimation[2] -= 0.05 * GUI.AnimationSpeed;
+		GUI._MenuAnimation[3] -= 0.05 * adapt;
+		if(GUI._MenuAnimation[3] <= 0) GUI._MenuAnimation[2] -= 0.05 * adapt;
 	}
 	GUI._MenuAnimation[2] = Clamp(GUI._MenuAnimation[2], 0, 1);
 	GUI._MenuAnimation[3] = Clamp(GUI._MenuAnimation[3], 0, 1);
@@ -301,6 +303,7 @@ GUI.DrawTabList = function(){
 }
 GUI.DrawHeader = function(){
 	if(GUI.ActiveTab === "" || GUI._MenuAnimation[2] < 1) return;
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var HeaderLogoColor = GUI.Colors.AnimateBackground(GUI.Colors.FadeColor(GUI.Colors.Logo, GUI.Colors.Text, GUI._HeaderAnimation[0]));
 	var HeaderLogoSize = Render.TextSizeCustom(GUI.LogoText, GUI.Fonts.HeaderLogo);
 	HeaderLogoSize[1] -= 12;
@@ -328,9 +331,9 @@ GUI.DrawHeader = function(){
 
 	if (UI.IsCursorInBox(HeaderLogoX, HeaderLogoY + GUI.Scale(4), HeaderLogoSize[0], HeaderLogoSize[1]) && !GUI._ColorPickerOpened && !GUI._HotkeyMenuOpened && !GUI._ColorMenuOpened){
 		if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._MenuIsMoving && GUI._SliderChanging === false) GUI._AnimatingBack = true;
-		GUI._HeaderAnimation[0] += 0.06;
+		GUI._HeaderAnimation[0] += 0.06 * adapt;
 	}
-	else GUI._HeaderAnimation[0] -= 0.06;
+	else GUI._HeaderAnimation[0] -= 0.06 * adapt;
 
 	GUI._HeaderAnimation[0] = Clamp(GUI._HeaderAnimation[0], 0, 1);
 
@@ -354,6 +357,7 @@ GUI.DrawHeader = function(){
 }
 GUI.DrawSubtabList = function(){
 	if(GUI.ActiveTab === "" || GUI._MenuAnimation[2] < 1) return;
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	GUI.SubtabListWidthScaled = GUI.Scale(GUI.SubtabListWidth);
 	GUI.ContainerWidth = GUI.Scale(GUI.Width - GUI.SubtabListWidth) - 44;
 
@@ -378,7 +382,7 @@ GUI.DrawSubtabList = function(){
 		}
 		Render.StringCustom(GUI.X + GUI.Scale(14), SubtabY + GUI.Scale(10), 0, SubtabName, SubtabTextColor, GUI.Fonts.SubtabText);
 		if (UI.IsCursorInBox(GUI.X, SubtabY, GUI.SubtabListWidthScaled, SubtabHeight) && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened){
-			GUI._SubtabAnimations[SubtabName] += 0.04;
+			GUI._SubtabAnimations[SubtabName] += 0.04 * adapt;
 			if(Input.IsKeyPressed(1) && !GUI.IsAnimating() && !GUI._SliderChanging){
 				if(GUI.ActiveSubtab !== SubtabName){
 					GUI._AnimatingElements = true;
@@ -387,20 +391,20 @@ GUI.DrawSubtabList = function(){
 				}
 			}
 		}
-		else GUI._SubtabAnimations[SubtabName] -= 0.04;
+		else GUI._SubtabAnimations[SubtabName] -= 0.04 * adapt;
 		GUI._SubtabAnimations[SubtabName] = Clamp(GUI._SubtabAnimations[SubtabName], 0, 1);
 		
 	}
 
 	if(GUI._AnimatingElements){
-		GUI._MenuAnimation[4] -= 0.06;
+		GUI._MenuAnimation[4] -= 0.06 * adapt;
 		if(GUI._MenuAnimation[4] <= 0){
 			GUI._AnimatingElements = false;
 			GUI._SubtabAnimations[GUI.NewActiveSubtab] = 0;
 			GUI.ActiveSubtab = GUI.NewActiveSubtab;
 		}
 	}
-	else if(GUI._MenuAnimation[3] >= 1) GUI._MenuAnimation[4] += 0.06;
+	else if(GUI._MenuAnimation[3] >= 1) GUI._MenuAnimation[4] += 0.06 * adapt;
 	GUI._MenuAnimation[4] = Clamp(GUI._MenuAnimation[4], 0, 1);
 }
 GUI.DrawElements = function(){
@@ -488,6 +492,7 @@ GUI.Scale = function(int){
 	return Math.ceil(int * GUI._Scale);
 }
 GUI.DrawCheckbox = function(x, y, name, id, state){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var CheckboxWidth = GUI.Scale(14);
 	var CheckboxHeight = CheckboxWidth;
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
@@ -506,7 +511,7 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 	Render.StringCustom(CheckboxTextX, y + GUI.Scale(12) + 2.6, 0, name, CheckboxTextColor, GUI.Fonts.Menu);
 
 	if (UI.IsCursorInBox(x, y + GUI.Scale(17), CheckboxWidth + 4 + CheckboxTextSize[0], CheckboxHeight + 2) && GUI._SliderChanging == false && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0&& !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0){
-		GUI._ElementAnimation[id] += 0.06;
+		GUI._ElementAnimation[id] += 0.06 * adapt;
 		if(Input.IsKeyPressed(1) && !GUI.IsAnimating()){
 			if(!GUI._ClickBlock){
 				GUI._ClickBlock = true;
@@ -515,7 +520,7 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 		}
 		else GUI._ClickBlock = false;
 	}
-	else GUI._ElementAnimation[id] -= 0.06;
+	else GUI._ElementAnimation[id] -= 0.06 * adapt;
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 	if(CheckboxState){
 		var ElementEndX = Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4);
@@ -577,6 +582,7 @@ GUI.DrawSlider = function(x, y, name, id){
 	//Render.FilledRect(SliderX - 8, SliderY, 8, SliderHeight, GUI.Colors.Background);
 }
 GUI.DrawHotkey = function(x, y, name, id){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
 	var HotkeyTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var HotkeyColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Checkbox, Animation, GUI._MenuAnimation[1] * 255);
@@ -620,10 +626,10 @@ GUI.DrawHotkey = function(x, y, name, id){
 	var HotkeyMenuElements = ["none", "hold", "toggle", "always"];
 	var HotkeyMenuHeight = (HotkeyMenuElements.length * HotkeyMenuElementsHeight) + ((HotkeyMenuElements.length - 1) * HotkeyMenuElementsMargin) + 4;
 
-	if (GUI._HotkeyMenuOpened === id || GUI._HotkeyIsChanging === id) GUI._ElementAnimation[id] += 0.06;
+	if (GUI._HotkeyMenuOpened === id || GUI._HotkeyIsChanging === id) GUI._ElementAnimation[id] += 0.06 * adapt;
 
 	if (UI.IsCursorInBox(HotkeyX, y + GUI.Scale(16), HotkeyWidth, HotkeyHeight)){
-		GUI._ElementAnimation[id] += 0.06;
+		GUI._ElementAnimation[id] += 0.06 * adapt;
 		if (!GUI._HotkeyIsChanging && GUI._HotkeyMenuOpened === false && GUI._SliderChanging === false && GUI._HotkeyMenuAnimation[0] === 0 && !GUI._ColorPickerOpened && GUI._DropdownAnimation[0] === 0){
 			if(Input.IsKeyPressed(1) && Hotkey.Mode !== "always"){
 				if(!GUI._ClickBlock){
@@ -641,7 +647,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 		}
 	}
 	else{
-		GUI._ElementAnimation[id] -= 0.06;
+		GUI._ElementAnimation[id] -= 0.06 * adapt;
 		if(!UI.IsCursorInBox(GUI._HotkeyMenuPos[0], GUI._HotkeyMenuPos[1], HotkeyMenuWidth, HotkeyMenuHeight) && GUI._HotkeyMenuOpened){
 			if(Input.IsKeyPressed(1)){
 				GUI._HotkeyMenuOpened = false;
@@ -657,6 +663,7 @@ GUI.DrawHotkey = function(x, y, name, id){
 	Render.StringCustom(HotkeyX + (HotkeyWidth / 2) - (HotkeyKeyNameTextSize[0] / 2) / 1.05, y + 16, 0, KeyName, HotkeyTextColor, GUI.Fonts.HotkeyKeyName);
 }
 GUI.DrawHotkeyMenu = function(){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var HotkeyMenuWidth = GUI.Scale(40);
 	var HotkeyMenuElementsHeight = GUI.Scale(14);
 	var HotkeyMenuElementsMargin = GUI.Scale(4);
@@ -664,14 +671,12 @@ GUI.DrawHotkeyMenu = function(){
 	var HotkeyMenuHeight = (HotkeyMenuElements.length * HotkeyMenuElementsHeight) + ((HotkeyMenuElements.length - 1) * HotkeyMenuElementsMargin) + 4;
 
 	if(GUI._HotkeyMenuOpened !== false){
-		GUI._HotkeyMenuAnimation[0] += 0.06;
-
-		if(GUI._HotkeyMenuAnimation[0] >= 0.8) GUI._HotkeyMenuAnimation[1] += 0.06;
+		GUI._HotkeyMenuAnimation[0] += 0.06 * adapt;
+		if(GUI._HotkeyMenuAnimation[0] >= 0.8) GUI._HotkeyMenuAnimation[1] += 0.06 * adapt;
 	}
 	else{
-		GUI._HotkeyMenuAnimation[1] -= 0.06;
-
-		if(GUI._HotkeyMenuAnimation[1] <= 0.2) GUI._HotkeyMenuAnimation[0] -= 0.06;
+		GUI._HotkeyMenuAnimation[1] -= 0.06 * adapt;
+		if(GUI._HotkeyMenuAnimation[1] <= 0.2) GUI._HotkeyMenuAnimation[0] -= 0.06 * adapt;
 	}
 
 	GUI._HotkeyMenuAnimation[0] = Clamp(GUI._HotkeyMenuAnimation[0], 0, 1);
@@ -697,7 +702,7 @@ GUI.DrawHotkeyMenu = function(){
 		var MenuElementY = GUI._HotkeyMenuPos[1] + ((HotkeyMenuElementsHeight + ((IsNotLast) ? HotkeyMenuElementsMargin : 0)) * Index);
 		var MenuElementHeight = HotkeyMenuElementsHeight + ((IsNotLast) ? HotkeyMenuElementsMargin : 0);
 		Render.StringCustom(MenuElementX, MenuElementY, 0, MenuElement, HotkeyMenuTextColorAnimated, GUI.Fonts.HotkeyKeyName);
-		if(IsActive) GUI._HotkeyMenuAnimation[2][Index] += 0.06;
+		if(IsActive) GUI._HotkeyMenuAnimation[2][Index] += 0.06 * adapt;
 		if(UI.IsCursorInBox(MenuElementX, MenuElementY, HotkeyMenuWidth, MenuElementHeight)){
 				if(Input.IsKeyPressed(1) && GUI._HotkeyMenuOpened !== false){
 					Hotkey.SetValue([MenuElement, Hotkey.Key]);
@@ -707,11 +712,9 @@ GUI.DrawHotkeyMenu = function(){
 				else{
 					GUI._ClickBlock = false;
 				}
-				GUI._HotkeyMenuAnimation[2][Index] += 0.06;
+				GUI._HotkeyMenuAnimation[2][Index] += 0.06 * adapt;
 			}
-			else{
-				if(!IsActive) GUI._HotkeyMenuAnimation[2][Index] -= 0.06;
-			}
+			else if(!IsActive) GUI._HotkeyMenuAnimation[2][Index] -= 0.06 * adapt;
 		
 		GUI._HotkeyMenuAnimation[2][Index] = Clamp(GUI._HotkeyMenuAnimation[2][Index], 0, 1);
 	}
@@ -799,20 +802,15 @@ GUI.DrawColorPicker = function(){
 	var ColorPickerMargin = 5;
 	var ColorPickerWidth = (ColorPickerMargin * 2) + 255;
 	var ColorPickerHeight = (ColorPickerMargin * 9) + 255 + 30 + 30;
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 
 	if(GUI._ColorPickerOpened !== false){
-		GUI._ColorPickerAnimation[0] += 0.07;
-
-		if(GUI._ColorPickerAnimation[0] >= 0.95){
-			GUI._ColorPickerAnimation[1] += 0.07;
-		}
+		GUI._ColorPickerAnimation[0] += 0.07 * adapt;
+		if(GUI._ColorPickerAnimation[0] >= 0.95) GUI._ColorPickerAnimation[1] += 0.07 * adapt;
 	}
 	else{
-		GUI._ColorPickerAnimation[1] -= 0.07;
-
-		if(GUI._ColorPickerAnimation[1] <= 0.05){
-			GUI._ColorPickerAnimation[0] -= 0.07;
-		}
+		GUI._ColorPickerAnimation[1] -= 0.07 * adapt;
+		if(GUI._ColorPickerAnimation[1] <= 0.05) GUI._ColorPickerAnimation[0] -= 0.07 * adapt;
 	}	
 
 	GUI._ColorPickerAnimation[0] = Clamp(GUI._ColorPickerAnimation[0], 0, 1);
@@ -882,6 +880,7 @@ GUI.DrawColorPicker = function(){
 	}
 }
 GUI.DrawColorMenu = function(){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var ColorMenuWidth = GUI.Scale(40);
 	var ColorMenuElementsHeight = GUI.Scale(14);
 	var ColorMenuElementsMargin = GUI.Scale(4);
@@ -889,12 +888,12 @@ GUI.DrawColorMenu = function(){
 	var ColorMenuHeight = (ColorMenuElements.length * ColorMenuElementsHeight) + ((ColorMenuElements.length - 1) * ColorMenuElementsMargin) + 4;
 
 	if (GUI._ColorMenuOpened !== false) {
-		GUI._ColorMenuAnimation[0] += 0.06;
-		if (GUI._ColorMenuAnimation[0] >= 0.8) GUI._ColorMenuAnimation[1] += 0.06;
+		GUI._ColorMenuAnimation[0] += 0.06 * adapt;
+		if (GUI._ColorMenuAnimation[0] >= 0.8) GUI._ColorMenuAnimation[1] += 0.06 * adapt;
 	}
 	else {
-		GUI._ColorMenuAnimation[1] -= 0.06;
-		if (GUI._ColorMenuAnimation[1] <= 0.2) GUI._ColorMenuAnimation[0] -= 0.06;
+		GUI._ColorMenuAnimation[1] -= 0.06 * adapt;
+		if (GUI._ColorMenuAnimation[1] <= 0.2) GUI._ColorMenuAnimation[0] -= 0.06 * adapt;
 	}
 
 	GUI._ColorMenuAnimation[0] = Clamp(GUI._ColorMenuAnimation[0], 0, 1);
@@ -935,16 +934,17 @@ GUI.DrawColorMenu = function(){
 			else {
 				GUI._ClickBlock = false;
 			}
-			GUI._ColorMenuAnimation[2][Index] += 0.06;
+			GUI._ColorMenuAnimation[2][Index] += 0.06 * adapt;
 		}
 		else {
-			GUI._ColorMenuAnimation[2][Index] -= 0.06;
+			GUI._ColorMenuAnimation[2][Index] -= 0.06 * adapt;
 		}
 
 		GUI._ColorMenuAnimation[2][Index] = Clamp(GUI._ColorMenuAnimation[2][Index], 0, 1);
 	}
 }
 GUI.DrawDropdown = function (x, y, name, id){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var ElementsWidths = [GUI.Scale(100)];
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
 	var DropdownElements = Element.Elements;
@@ -968,7 +968,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 	Render.Polygon([[x + DropdownWidth - 5 - 6, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 + 1, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 - 3, DropdownY + DropdownHeight / 2 + 2]], DropdownBorderColorAnimated);
 	var OtherElementsActive = !GUI._SliderChanging && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0;
 	if (UI.IsCursorInBox(x, DropdownY, DropdownWidth, DropdownHeight) && OtherElementsActive && !GUI._DropdownOpened && GUI._DropdownAnimation[0] === 0){
-		GUI._ElementAnimation[id] += 0.06;
+		GUI._ElementAnimation[id] += 0.06 * adapt;
 		if (Input.IsKeyPressed(1)) {
 			if (!GUI._ClickBlock) {
 				GUI._ClickBlock = true;
@@ -982,7 +982,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 		}
 	}
 	else{
-		GUI._ElementAnimation[id] -= 0.06;
+		GUI._ElementAnimation[id] -= 0.06 * adapt;
 		if (!UI.IsCursorInBox(GUI._DropdownPos[0], GUI._DropdownPos[1], DropdownWidth, Math.ceil(DropdownHeight * DropdownElements.length)) && GUI._DropdownOpened && !GUI._DropdownSelectingElement){
 			if (Input.IsKeyPressed(1)) {
 				GUI._DropdownOpened = false;
@@ -993,13 +993,14 @@ GUI.DrawDropdown = function (x, y, name, id){
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 }
 GUI.DrawDropdownSelector = function(){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	if (GUI._DropdownOpened !== false) {
-		GUI._DropdownAnimation[0] += 0.06;
-		if (GUI._DropdownAnimation[0] >= 0.8) GUI._DropdownAnimation[1] += 0.06;
+		GUI._DropdownAnimation[0] += 0.06 * adapt;
+		if (GUI._DropdownAnimation[0] >= 0.8) GUI._DropdownAnimation[1] += 0.06 * adapt;
 	}
 	else {
-		GUI._DropdownAnimation[1] -= 0.06;
-		if (GUI._DropdownAnimation[1] <= 0.2) GUI._DropdownAnimation[0] -= 0.06;
+		GUI._DropdownAnimation[1] -= 0.06 * adapt;
+		if (GUI._DropdownAnimation[1] <= 0.2) GUI._DropdownAnimation[0] -= 0.06 * adapt;
 	}
 
 	GUI._DropdownAnimation[0] = Clamp(GUI._DropdownAnimation[0], 0, 1);
@@ -1030,13 +1031,13 @@ GUI.DrawDropdownSelector = function(){
 	for(Index in DropdownElements){
 		var ElementY = GUI._DropdownPos[1] + (ElementHeight * Index);
 		var IsActive = Element.Value == Index;
-		if (IsActive) GUI._DropdownAnimation[2][Index] += 0.08;
+		if (IsActive) GUI._DropdownAnimation[2][Index] += 0.08 * adapt;
 		var DropdownTextColor = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, GUI.Colors.HotkeyMenuTextActive, GUI._DropdownAnimation[2][Index]), Lerp(0, 255, DropdownTextAnimation));
 
 		Render.StringCustom(GUI._DropdownPos[0] + GUI.Scale(5), ElementY + GUI.Scale(2), 0, DropdownElements[Index], DropdownTextColor, GUI.Fonts.Menu);
 		if (UI.IsCursorInBox(GUI._DropdownPos[0] + 1, ElementY, ElementWidth, ElementHeight) && GUI._DropdownAnimation[0] === 1 && GUI._DropdownOpened){
 			GUI._DropdownSelectingElement = true;
-			GUI._DropdownAnimation[2][Index] += 0.066;
+			GUI._DropdownAnimation[2][Index] += 0.066 * adapt;
 			if (Input.IsKeyPressed(1) && !GUI._ClickBlock){
 				Element.SetValue(Index);
 				GUI._DropdownOpened = false;
@@ -1044,7 +1045,7 @@ GUI.DrawDropdownSelector = function(){
 			}
 		}
 		else{
-			GUI._DropdownAnimation[2][Index] -= 0.066;
+	GUI._DropdownAnimation[2][Index] -= 0.066 * adapt;
 		}
 		GUI._DropdownAnimation[2][Index] = Clamp(GUI._DropdownAnimation[2][Index], 0, 1);
 	}
@@ -1103,7 +1104,7 @@ GUI.DrawLabel = function(x, y, name){
 GUI.ProcessDrag = function(){
 	if(!UI.IsMenuOpen()) return;
 	var HeaderLogoSize = Render.TextSizeCustom(GUI.LogoText, GUI.Fonts.HeaderLogo);
-	if (!Input.IsKeyPressed(0x01) || GUI.IsAnimating() || GUI._AnimatingElements || keybind_list_is_moving){
+	if (!Input.IsKeyPressed(0x01) || GUI.IsAnimating() || GUI._AnimatingElements || keybind_list_is_moving || spectator_list_is_moving){
 		GUI._MenuIsMoving = false;
 		GUI._OldCursor = CursorPos;
 		return;
@@ -1122,17 +1123,18 @@ GUI.ProcessDrag = function(){
 	GUI.Y = Clamp(GUI.Y, -28, ScreenSize[1] - 5);
 }
 GUI.ProcessAnimations = function(){
+	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	if(UI.IsMenuOpen()){
-		if(GUI._MenuAnimation[0] > 0.8 * GUI.AnimationSpeed){
-			GUI._MenuAnimation[1] += 0.07 * GUI.AnimationSpeed;
+		if(GUI._MenuAnimation[0] > 0.8){
+			GUI._MenuAnimation[1] += 0.07 * adapt;
 		}
-		GUI._MenuAnimation[0] += ((GUI._MenuAnimation[0] < 0.75 * GUI.AnimationSpeed) ? 0.04 : 0.02) * GUI.AnimationSpeed;
+		GUI._MenuAnimation[0] += ((GUI._MenuAnimation[0] < 0.75) ? 0.04 : 0.02) * adapt;
 	}
 	else{
-		if(GUI._MenuAnimation[1] < 0.2 / GUI.AnimationSpeed){
-			GUI._MenuAnimation[0] -= ((GUI._MenuAnimation[0] < 0.2 / GUI.AnimationSpeed) ? 0.05 : 0.07) * GUI.AnimationSpeed;
+		if(GUI._MenuAnimation[1] < 0.2){
+			GUI._MenuAnimation[0] -= ((GUI._MenuAnimation[0] < 0.2) ? 0.05 : 0.07) * adapt;
 		}
-		GUI._MenuAnimation[1] -= 0.07 * GUI.AnimationSpeed;
+		GUI._MenuAnimation[1] -= 0.07 * adapt;
 	}
 	GUI._MenuAnimation[0] = Clamp(GUI._MenuAnimation[0], 0, 1);
 	GUI._MenuAnimation[1] = Clamp(GUI._MenuAnimation[1], 0, 1);
@@ -1507,7 +1509,7 @@ GUI.GetColor = function(tab, subtab, name, cache, hsv){
 	if(hsv === null || (typeof hsv) === "undefined") hsv = false;
 	if(cache){
 		if(hsv) return [Element.Color, Element.ColorHSV]; 
-		return Element.Color; 
+		return [].concat(Element.Color); 
 	}
 	var RGBToHSV = function(col) {
 		var g = col[1], b = col[2], a = col[3], r = col[0];
@@ -1786,7 +1788,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 64
+//Last index is 65
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1900,9 +1902,9 @@ GUI.AddCheckbox("Damage marker", 23).additional("color");
 GUI.AddCheckbox("Outline", 23).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("History chams on extended backtrack", 24);
 GUI.AddCheckbox("Better glow chams", 8).additional("color");
-GUI.AddCheckbox("Hollow", 3).master("Better glow chams");
+GUI.AddCheckbox("Hollow", 3).master("Better glow chams").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Pulse", 46).master("Better glow chams");
-GUI.AddCheckbox("Wireframe", 30).master("Better glow chams");
+GUI.AddCheckbox("Wireframe", 30).master("Better glow chams").flags(GUI.SAME_LINE);
 
 GUI.AddSubtab("Local");
 GUI.AddCheckbox("Agent changer", 26);
@@ -1939,6 +1941,7 @@ GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
 
 GUI.AddSubtab("GUI");
 GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI']);
+GUI.AddCheckbox("Show icon", 65).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
@@ -3153,11 +3156,7 @@ function grenade_warning_tick() {
 			Entity.SetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody", Entity.GetProp(entity, "CBaseCSGrenadeProjectile", "m_nBody") + 1)
 		}
 	}
-	if (entities.length == 0) {
-		hits = []
-		lines = []
-		pmolotov = []
-	}
+	if (entities.length == 0) lines = pmolotov = hits = [];
 	entities = Entity.GetEntitiesByClassID(9)
 	for (var i = 0; i < entities.length; i++) {
 		entity = entities[i]
@@ -3470,8 +3469,8 @@ function indicators(){
 
 	var font = Render.AddFont("Segoe UI", 7, 600);
 	var fonta = Render.AddFont("Segoe UI", 5, 600);
-	var speed = 14;
-	var margin = 10
+	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
+	var margin = 10;
 	var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
 	var x = ScreenSize[0] / 2;
 	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "Indicators", "Indicators Y offset");
@@ -3605,14 +3604,17 @@ var info_window_height = 19;
 function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
 	var iconfont = Render.AddFont("OnetapFont", 13, 100);
 	if (alpha == 0) return;
-	var background = [0, 0, 0, alpha / 2];
+	const opacity = color[3];
+	color[3] = alpha;
+	var background = [0, 0, 0, alpha * (opacity / 255)];
 	var colored_line_y = style ? 20 : 2;
 	var title_y = style ? 1 : 0;
+	var showicon = GUI.GetValue("Visuals", "GUI", "Show icon");
 	if(!style) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
 	Render.FilledRect(x, y + 1, info_window_width, info_window_height - 3, background);
-	Render.StringCustom(x + (style ? info_window_width / 2 : 25), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, alpha], font);
+	if(text !== null) Render.StringCustom(x + (style ? info_window_width / 2 : (showicon ? 25 : 4)), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, alpha], font);
 	Render.FilledRect(x, y + info_window_height - colored_line_y, 180, 2, color);
-	if (icon !== null) Render.StringCustom(x + 6, y, 0, icon, color, iconfont);
+	if (icon !== null && showicon) Render.StringCustom(x + 6, y, 0, icon, color, iconfont);
 }
 
 var keybind_list_alpha = 0;
@@ -3647,7 +3649,7 @@ function keybindList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
 	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var visible = false;
-	var speed = 14;
+	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
 	var margin = 15;
 	var binds_y = keybind_list_y + info_window_height + 1;
 	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
@@ -3672,7 +3674,7 @@ function keybindList(){
 	visible = visible || UI.IsMenuOpen();
 	keybind_list_alpha = Clamp(keybind_list_alpha += speed * (visible && 1 || -1), 0, 255);
 	
-	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Keybind list"), keybind_list_alpha);
+	var color = GUI.GetColor("Visuals", "GUI", "Keybind list");
 	drawInfoWindow(keybind_list_x, keybind_list_y, "keybinds", "H", keybind_list_alpha, color, font, style);
 }
 
@@ -3716,7 +3718,7 @@ var spectator_modes = "none deathcam freezecam fixed 1st 3rd fly".split(" ");
 function spectatorList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Spectator list")) return;
 	var visible = false;
-	var speed = 14;
+	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
 	var margin = 15;
 	var specs_y = spectator_list_y + 21;
 	var players = Entity.GetPlayers();
@@ -3746,9 +3748,10 @@ function spectatorList(){
 	visible = visible || UI.IsMenuOpen();
 	spectator_list_alpha = Clamp(spectator_list_alpha += speed * (visible && 1 || -1), 0, 255);
 	if (spectator_list_alpha == 0) return;
-	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Spectator list"), spectator_list_alpha);
-	drawInfoWindow(spectator_list_x, spectator_list_y, "spectators", null, spectator_list_alpha, color, font, style);
-	Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", color, 6);
+	var rawcolor = GUI.GetColor("Visuals", "GUI", "Spectator list");
+	var color = GUI.Colors.GetColor(rawcolor, spectator_list_alpha);
+	drawInfoWindow(spectator_list_x, spectator_list_y, "spectators", null, spectator_list_alpha, rawcolor, font, style);
+	if(GUI.GetValue("Visuals", "GUI", "Show icon")) Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", color, 6);
 
 	//Reset invalid players
 	if(World.GetServerString())
@@ -3792,12 +3795,15 @@ function watermark(){
 	if(!GUI.GetValue("Visuals", "GUI", "Watermark")) return;
 	//if(must_display_username == null) must_display_username = mustDisplayString(rusToEng(Cheat.GetUsername()), Render.AddFont("Segoe UI Semilight", 9, 200), 9);
 	var visible = World.GetServerString() || UI.IsMenuOpen();
-	var speed = 14;
+	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
 	watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255);
 	if (watermark_alpha == 0) return;
-	var font = Render.AddFont("Segoe UI Semilight", 9, 200);
+	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
+	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	var y = 4;
-	var color = GUI.Colors.GetColor(GUI.GetColor("Visuals", "GUI", "Watermark"), watermark_alpha);
+	var rawcolor = GUI.GetColor("Visuals", "GUI", "Watermark");
+	var opacity = rawcolor[3];
+	var color = GUI.Colors.GetColor(rawcolor, watermark_alpha);
 	var elemets = ["     " + GUI.LogoText.toLowerCase()];
 	elemets.push(rusToEng(Cheat.GetUsername()));
 	if(World.GetServerString()) elemets.push("delay: " + ((World.GetServerString() == "local server") ? 0 : Math.floor(Global.Latency() * 1000 / 1)) + "ms");
@@ -3809,19 +3815,27 @@ function watermark(){
     var minutes = minutes1 <= 9 ? "0" + minutes1 + ":" : minutes1 + ":";
 	var seconds = seconds1 <= 9 ? "0" + seconds1 : seconds1;
 	elemets.push(hours + minutes + seconds);
-	var text = elemets.join(" / ");
+	var text = elemets.join(style ? " | " : " / ");
 	var text_size = Render.TextSizeCustom(text, font);
-	var width = text_size[0] + 9;
+	var icon = GUI.GetValue("Visuals", "GUI", "Show icon");
+	var width = text_size[0] + (icon ? 9 : -6) - (6 * +style);
 	var height = 19;
 	var x = ScreenSize[0] - width - 4;
-	var background = [0, 0, 0, watermark_alpha / 2];
-	Render.FilledRect(x + 1, y, width - 2, 1, color);
+	var background = [0, 0, 0, watermark_alpha * (opacity / 255)];
+	var r = +!style;
+
+	//Top line
+	Render.FilledRect(x + (1 * r), y, width - (2 * r), 1, color);
 	Render.FilledRect(x, y + 1, width, 1, color);
+
+	//Background
 	Render.FilledRect(x, y + 2, width, height - 3, background);
-	Render.FilledRect(x + 1, y + height - 1, width - 2, 1, background);
-	Render.String(x + 1, y + 1, 0, "!", color, 5);
-	Render.StringCustom(x + 6, y + 4, 0, text, background, font);
-	Render.StringCustom(x + 5, y + 2, 0, text, [255, 255, 255, watermark_alpha], font);
+	Render.FilledRect(x + (1 * r), y + height - 1, width - (2 * r), 1, background);
+
+	icon && Render.String(x + 1, y + 1, 0, "!", color, 5);
+	var xAdd = (icon ? 5 : -10) - (6 * +style);
+	Render.StringCustom(x + xAdd + 1, y + 4, 0, text, background, font);
+	Render.StringCustom(x + xAdd, y + 2, 0, text, [255, 255, 255, watermark_alpha], font);
 }
 
 Global.RegisterCallback("Draw", "watermark");
