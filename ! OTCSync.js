@@ -1935,7 +1935,7 @@ GUI.AddSubtab("Indicators");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
-GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura']).master("Indicators");
+GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura', 'IDEAL YAW']).master("Indicators");
 GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
 GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
 
@@ -2463,7 +2463,8 @@ function isRealInverted() {
 	var diff = Local.GetRealYaw() - Local.GetFakeYaw()
 	while (diff > 180) diff -= 360;
 	while (diff < 180) diff += 360;
-	return Math.abs(diff) >= 360;
+	if(isLegitAAActive()) return Math.abs(diff) <= 360;
+	else return Math.abs(diff) >= 360;
 }
 
 
@@ -3424,19 +3425,22 @@ function renderDtAndCircle(x, y, centered, c, i){
 	return text;
 }
 
+// ЭТО СУКА ПРОСТО ПИЗДЕЦ, Я НЕ МОГУ НАХУЙ, АХУЕТЬ, Я ХОЧУ НАХУЙ ПЛАКАТЬ, ЭТО У МЕНЯ СТОЛЬКО НЕРВОВ ВЫРВАЛО, И ВСЕ РАВНО ОНО ЕБАШИТ МАКСИМАЛЬНО ХУЕВО
+// Сделано: Новый цвет индикаторов без кастомного цвета, третий тип
+// баги: дохуища костылей, невозможность убрать дт из индикаторов 
 var indicators_paths = [
 //	0								1														2					3					4
-	[mindamageGetIndicatorString,	[],														isMindamageActive,	[241, 239, 214],	0],
+	[mindamageGetIndicatorString,	[],														isMindamageActive,	[145, 155, 100],	0],
 	[renderDtAndCircle,				["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
-	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[119, 113, 174],	0],
+	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
 	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
-	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[210, 149, 135],	0],
+	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[145, 155, 100],	0],
 	["lowdelta", 					["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
-	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[199, 34, 53],		0],
-	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[0, 222, 222],		0],
+	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[141, 140, 197],	0],
+	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[141, 140, 197],	0],
 	["legit aa",					[],														isLegitAAActive,	[244, 205, 166],	0],
-	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[165, 200, 228],	0],
-	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[249, 240, 193],	0]
+	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[145, 155, 100],	0],
+	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[145, 155, 100],	0]
 ]	
 function indicators(){
 	if(!GUI.GetValue("Visuals", "Indicators", "Indicators") || !isAlive) return;
@@ -3447,11 +3451,13 @@ function indicators(){
 
 	var font = Render.AddFont("Segoe UI", 7, 600);
 	var fonta = Render.AddFont("Segoe UI", 5, 600);
+	var idfont = Render.AddFont("Tahoma", 7, 500);
 	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
 	var margin = 10;
 	var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
 	var x = ScreenSize[0] / 2;
 	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "Indicators", "Indicators Y offset");
+	var idy = type === 3 ? 30 : 0
 	var centered = +GUI.GetValue("Visuals", "Indicators", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "Indicators", "Indicators type");
 	var inv = GUI.GetValue("Visuals", "Indicators", "Inverter check")
@@ -3462,6 +3468,7 @@ function indicators(){
 	delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
 	c1 = (custom_color || [193, 199, 255, 255])
 	c2 = [255, 255, 255, 255]
+	c3 = (custom_color ? custom_color : GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta") ? [29, 180, 29, 255] : delta < 14 ? [220, 0, 29, 200] : [220, 135, 49, 255])
 	x = (type === 1) ? x + (centered ? 0 : 5) : x;
 	if (type === 1) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
@@ -3482,19 +3489,34 @@ function indicators(){
 		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
 		if (centered) Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
 	}
+	else if (type === 3) {
+		Render.StringCustom(x, y + 2, centered, "IDEAL YAW", [0, 0, 0, 255], idfont);
+		if(inv){
+			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "IDEAL", (isRealInverted() ? c3 : c2), idfont);
+			Render.StringCustom(x + 15.5 * (centered ? 1.05 : 2), y, centered, "YAW", (isRealInverted() ? c2 : c3), idfont);
+		}
+		else Render.StringCustom(x, y, centered, "IDEAL YAW", c3, idfont);
+		Render.StringCustom(x, y + 12, centered, aa, [0, 0, 0, 255], idfont);
+		Render.StringCustom(x, y + 10, centered, aa, custom_color || [209, 159, 230, 255], idfont);
+		Render.StringCustom(x, y + 22, centered, "DT", [0, 0, 0, 255], idfont)
+		Render.StringCustom(x, y + 20, centered, "DT", UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") ? [163, 213 * Exploit.GetCharge(), 117 * Exploit.GetCharge(), 255] : [163, 0, 0, 255], idfont)
+	}
 	for (indicator_path in indicators_paths) {
+		fonts = type === 3 ? idfont : type === 2 ? fonta : font
+		var not_draw = type === 1 || type === 3
 		var indicator = indicators_paths[indicator_path];
 		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9)/* && !local_buymenu_opened*/;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var marginy = type === 1 ? 20 : type === 2 ? 15 : 0;
-		var cY = y - margin + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
+		var cY = y - margin + (type === 3 ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
-		if (type === 1 && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
+		if (not_draw && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
 		text = (type !== 0 && text == "auto") ? "peek" : text;
+		text = (type === 3 && text == "fd") ? "duck" : text;
 		text = (type !== 0) ? text.toUpperCase() : text;
-		Render.StringCustom(x, cY + (type === 2 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], type === 2 ? fonta : font);
-		Render.StringCustom(x, cY + (type === 2 ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], type === 2 ? fonta : font);
+		Render.StringCustom(x, cY + idy + (type === 3 || type === 2 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], fonts);
+		Render.StringCustom(x, cY + idy + (type === 2 ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], fonts);
 		y += (indicator[4] / 255) * margin;
 	}
 }
@@ -3549,7 +3571,7 @@ function idealYaw(){
 	var direction = !Input.IsKeyPressed(65) && Input.IsKeyPressed(68)
 	direction = (--mode === 1 || (mode === 2 && !isAutopeeking())) ? !direction : direction;
 	if (UI.IsHotkeyActive("Anti-Aim", "Fake angles", "Inverter") && direction) UI.ToggleHotkey("Anti-Aim", "Fake angles", "Inverter");
-	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", !direction)
+	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", isLegitAAActive() ? direction : !direction)
 }
 
 Global.RegisterCallback("Draw", "idealYaw");
