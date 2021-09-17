@@ -3510,7 +3510,8 @@ function indicators(){
 		Render.StringCustom(x, y + 12, centered, aa, [0, 0, 0, 255], idfont);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [209, 159, 230, 255], idfont);
 		Render.StringCustom(x, y + 22, centered, "DT", [0, 0, 0, 255], idfont)
-		Render.StringCustom(x, y + 20, centered, "DT", UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") ? [163, 213 * Exploit.GetCharge(), 117 * Exploit.GetCharge(), 255] : [163, 0, 0, 255], idfont)
+		var ch = Exploit.GetCharge()
+		Render.StringCustom(x, y + 20, centered, "DT", UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") ? [163, 213 * ch, 117 * ch, 255] : [163, 0, 0, 255], idfont)
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path], color = custom_color || indicator[3], active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9);
