@@ -3419,20 +3419,21 @@ function renderDtCircle(x, y, col){
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
+	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") !== 3){
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
 	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
 	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
-	return text;
+	} return text;
 }
 
 // ЭТО СУКА ПРОСТО ПИЗДЕЦ, Я НЕ МОГУ НАХУЙ, АХУЕТЬ, Я ХОЧУ НАХУЙ ПЛАКАТЬ, ЭТО У МЕНЯ СТОЛЬКО НЕРВОВ ВЫРВАЛО, И ВСЕ РАВНО ОНО ЕБАШИТ МАКСИМАЛЬНО ХУЕВО
-// Сделано: Новый цвет индикаторов без кастомного цвета, третий тип
-// баги: дохуища костылей, невозможность убрать дт из индикаторов 
+// Сделано: Новый цвет индикаторов без кастомного цвета, третий тип, фикс дт
+// баги: дохуища костылей
 var indicators_paths = [
 //	0								1														2					3					4
-	[mindamageGetIndicatorString,	[],														isMindamageActive,	[145, 155, 100],	0],
 	[renderDtAndCircle,				["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
 	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
+	[mindamageGetIndicatorString,	[],														isMindamageActive,	[145, 155, 100],	0],
 	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
 	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[145, 155, 100],	0],
 	["lowdelta", 					["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
@@ -3469,7 +3470,7 @@ function indicators(){
 	c1 = (custom_color || [193, 199, 255, 255])
 	c2 = [255, 255, 255, 255]
 	c3 = (custom_color ? custom_color : GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta") ? [29, 180, 29, 255] : delta < 14 ? [220, 0, 29, 200] : [220, 135, 49, 255])
-	x = (type === 1) ? x + (centered ? 0 : 5) : x;
+	x = (type === 1 || type === 3) ? x + (centered ? 0 : 5) : (type === 2) ? x + (centered ? 0 : 2) : x;
 	if (type === 1) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
@@ -3512,6 +3513,7 @@ function indicators(){
 		var color = custom_color || indicator[3];
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_draw && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
+		if (type === 3 && ~("dt     ").indexOf(text)) continue;
 		text = (type !== 0 && text == "auto") ? "peek" : text;
 		text = (type === 3 && text == "fd") ? "duck" : text;
 		text = (type !== 0) ? text.toUpperCase() : text;
