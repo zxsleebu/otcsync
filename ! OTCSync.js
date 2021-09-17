@@ -2464,7 +2464,7 @@ function isRealInverted() {
 	var diff = Local.GetRealYaw() - Local.GetFakeYaw()
 	while (diff > 180) diff -= 360;
 	while (diff < 180) diff += 360;
-	if(isLegitAAActive) return Math.abs(diff) <= 360;
+	if(isLegitAAActive()) return Math.abs(diff) <= 360;
 	else return Math.abs(diff) >= 360;
 }
 
@@ -3509,6 +3509,8 @@ function indicators(){
 		else Render.StringCustom(x, y, centered, "IDEAL YAW", c3, idfont);
 		Render.StringCustom(x, y + 12, centered, aa, [0, 0, 0, 255], idfont);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [209, 159, 230, 255], idfont);
+		Render.StringCustom(x, y + 22, centered, "DT", [0, 0, 0, 255], idfont)
+		Render.StringCustom(x, y + 20, centered, "DT", UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") ? [163, 213 * Exploit.GetCharge(), 117 * Exploit.GetCharge(), 255] : [163, 0, 0, 255], idfont)
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path], color = custom_color || indicator[3], active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9);
@@ -3518,6 +3520,7 @@ function indicators(){
 		var cY = y - margin + (isIdealYaw ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + marginy;
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_draw && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
+		if (isIdealYaw && ~("DT").indexOf(text)) continue;
 		text = (!isDefault && text == "auto") ? "peek" : text;
 		text = (isIdealYaw && text == "fd") ? "duck" : text;
 		text = (!isDefault) ? text.toUpperCase() : text;
@@ -3579,7 +3582,7 @@ function idealYaw(){
 	var direction = !Input.IsKeyPressed(65) && Input.IsKeyPressed(68)
 	direction = (--mode === 1 || (mode === 2 && !isAutopeeking())) ? !direction : direction;
 	if (UI.IsHotkeyActive("Anti-Aim", "Fake angles", "Inverter") && direction) UI.ToggleHotkey("Anti-Aim", "Fake angles", "Inverter");
-	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", isLegitAAActive ? direction : !direction)
+	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", isLegitAAActive() ? direction : !direction)
 }
 
 Global.RegisterCallback("Draw", "idealYaw");
