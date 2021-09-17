@@ -2282,6 +2282,7 @@ var russianToEng = {
 	"1085": "H",
 	"1068": "b",
 	"1075": "r",
+	"1076": "g"
 }
 function rusToEng(str){
 	var rus = "";
@@ -2559,7 +2560,7 @@ function jumpscout(enemy){
 var legbreaker_delay = 0;
 var fakelag_leg = false;
 function legbreaker(){
-	if(!isAlive) return;
+	if(!isAlive || (GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") && !exploitsActive("all"))) return;
 	var legbreaker = GUI.GetValue("Anti-Aim", "Other", "Legbreaker");
 	if(!legbreaker) return;
 	var legmovement = UI.GetValue("Misc", "GENERAL", "Movement", "Slide walk");
@@ -2861,22 +2862,25 @@ function staticLegs(){
 	if (!GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") || Input.IsKeyPressed(0x20) || isInAir() || exploitsActive("all")) return;
 	var fakelag = GUI.GetValue("Anti-Aim", "Fake Lag", "Fake lag choke");
 	UI.SetValue("Anti-Aim", "Fake-Lag", "Jitter", 0);
-	/*var exploits = exploitsActive("all");
+	UI.SetValue("Anti-Aim", "Extra", "Jitter move", 0);
+	UI.SetValue("Misc", "GENERAL", "Movement", "Accurate walk", 0);
 	var mov = [0, 0, 0];
+	var breakmode = GUI.GetValue("Anti-Aim", "Fake Lag", "Slide break mode");
+	/*var exploits = exploitsActive("all");
 	if(exploits){
 		fakelag = 2;
-		var cur = UserCMD.GetMovement();
 		mov = [cur[0] / 7, cur[1] / 7, cur[2]];
 	}*/
+	if(breakmode) cur = UserCMD.GetMovement(), mov = [-cur[0] * 1.5, -cur[1] * 1.5, -cur[2]];
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag);
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", (1 * +!GUI.GetValue("Anti-Aim", "Fake Lag", "Slide break mode")));
+			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", (1 * +!breakmode));
 			break;
 		case fakelag - 1:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", 0);
 			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1);
-			UserCMD.SetMovement([0, 0, 0]);
+			UserCMD.SetMovement(mov);
 			break;
 	}
 }
@@ -3735,8 +3739,8 @@ function spectatorList(){
 		if(!(player in spectators_alpha)) spectators_alpha[player] = 0;
 		if(player === local) continue;
 		var observer = Entity.GetProp(player, "DT_BasePlayer", "m_hObserverTarget");
-		var active = player && !Entity.IsAlive(player) && (observer && observer !== "m_hObserverTarget");
-		active = active && (isAlive ? (observer === local) : (observer == Entity.GetProp(local,"DT_BasePlayer","m_hObserverTarget")));
+		var active = player && !Entity.IsAlive(player) && (observer && observer !== "m_hObserverTarget" && Entity.IsValid(observer) && Entity.IsAlive(observer))
+		&& (isAlive ? (observer === local) : (observer == Entity.GetProp(local,"DT_BasePlayer","m_hObserverTarget")));
 		var specmode = spectator_modes[+Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")];
 		active = active && (specmode != "none");
 		if(active) visible = true;
