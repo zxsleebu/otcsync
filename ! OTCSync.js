@@ -2463,7 +2463,7 @@ function isRealInverted() {
 	var diff = Local.GetRealYaw() - Local.GetFakeYaw()
 	while (diff > 180) diff -= 360;
 	while (diff < 180) diff += 360;
-	if(isLegitAAActive()) return Math.abs(diff) <= 360;
+	if(isLegitAAActive) return Math.abs(diff) <= 360;
 	else return Math.abs(diff) >= 360;
 }
 
@@ -3419,11 +3419,11 @@ function renderDtCircle(x, y, col){
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
-	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") !== 3){
+	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 3) return text;
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
 	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
 	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
-	} return text;
+	return text;
 }
 
 // ЭТО СУКА ПРОСТО ПИЗДЕЦ, Я НЕ МОГУ НАХУЙ, АХУЕТЬ, Я ХОЧУ НАХУЙ ПЛАКАТЬ, ЭТО У МЕНЯ СТОЛЬКО НЕРВОВ ВЫРВАЛО, И ВСЕ РАВНО ОНО ЕБАШИТ МАКСИМАЛЬНО ХУЕВО
@@ -3433,15 +3433,15 @@ var indicators_paths = [
 //	0								1														2					3					4
 	[renderDtAndCircle,				["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
 	["hide",						["Rage", "GENERAL", "Exploits", "Hide shots"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
-	[mindamageGetIndicatorString,	[],														isMindamageActive,	[145, 155, 100],	0],
+	[mindamageGetIndicatorString,	[],														isMindamageActive,	[241, 239, 214],	0],
 	["backshoot",					["Rage", "Other", "Force backshoot"],					GUI.IsHotkeyActive,	[74, 207, 0],		0],
-	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[145, 155, 100],	0],
+	["fd",							["Anti-Aim", "Extra", "Fake duck"],						UI.IsHotkeyActive,	[241, 239, 214],	0],
 	["lowdelta", 					["Anti-Aim", "General", "Lowdelta"],					GUI.IsHotkeyActive,	[255, 255, 255],	0],
 	["baim",						["Rage", "GENERAL", "General", "Force body aim"],		UI.IsHotkeyActive,	[141, 140, 197],	0],
 	["safe",						["Rage", "GENERAL", "General", "Force safe point"],		UI.IsHotkeyActive,	[141, 140, 197],	0],
 	["legit aa",					[],														isLegitAAActive,	[244, 205, 166],	0],
-	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[145, 155, 100],	0],
-	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[145, 155, 100],	0]
+	["freestand",					["Anti-Aim", "General", "Freestanding"],				GUI.IsHotkeyActive,	[241, 239, 214],	0],
+	["auto",						["Misc", "General", "Auto peek"],						UI.IsHotkeyActive,	[241, 239, 214],	0]
 ]	
 function indicators(){
 	if(!GUI.GetValue("Visuals", "Indicators", "Indicators") || !isAlive) return;
@@ -3573,7 +3573,7 @@ function idealYaw(){
 	var direction = !Input.IsKeyPressed(65) && Input.IsKeyPressed(68)
 	direction = (--mode === 1 || (mode === 2 && !isAutopeeking())) ? !direction : direction;
 	if (UI.IsHotkeyActive("Anti-Aim", "Fake angles", "Inverter") && direction) UI.ToggleHotkey("Anti-Aim", "Fake angles", "Inverter");
-	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", isLegitAAActive() ? direction : !direction)
+	GUI.OverrideState("Misc", "Keybinds fixer", "Inverter", isLegitAAActive ? direction : !direction)
 }
 
 Global.RegisterCallback("Draw", "idealYaw");
