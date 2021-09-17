@@ -2467,6 +2467,10 @@ function isRealInverted() {
 	else return Math.abs(diff) >= 360;
 }
 
+function getAntiaimDelta(){
+	return Math.min(Math.abs(Local.GetRealYaw() - Local.GetFakeYaw()) / 2, 60).toFixed(0) - 15;
+}
+
 
 
 function enemies(){
@@ -3419,16 +3423,13 @@ function renderDtCircle(x, y, col){
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
-	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 3) return text;
+	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 3) return "DT";
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
 	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
 	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
 	return text;
 }
 
-// ЭТО СУКА ПРОСТО ПИЗДЕЦ, Я НЕ МОГУ НАХУЙ, АХУЕТЬ, Я ХОЧУ НАХУЙ ПЛАКАТЬ, ЭТО У МЕНЯ СТОЛЬКО НЕРВОВ ВЫРВАЛО, И ВСЕ РАВНО ОНО ЕБАШИТ МАКСИМАЛЬНО ХУЕВО
-// Сделано: Новый цвет индикаторов без кастомного цвета, третий тип, фикс дт
-// баги: дохуища костылей
 var indicators_paths = [
 //	0								1														2					3					4
 	[renderDtAndCircle,				["Rage", "GENERAL", "Exploits", "Doubletap"],			UI.IsHotkeyActive,	[163, 213, 117],	0],
@@ -3446,79 +3447,80 @@ var indicators_paths = [
 function indicators(){
 	if(!GUI.GetValue("Visuals", "Indicators", "Indicators") || !isAlive) return;
 	if(Input.IsKeyPressed(27)) local_buymenu_opened = false;
-	var aa = (GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta") ? "LOW DELTA" :
-	(isLegitAAActive() ? "LEGIT AA" :
-	(GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding") ? "FREESTANDING" : "DYNAMIC")));
-
+	var lowdeltaActive = GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta");
+	var aa = (lowdeltaActive ? "LOW DELTA"
+	: (isLegitAAActive() ? "LEGIT AA"
+	: (GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding") ? "FREESTANDING"
+	: "DYNAMIC")));
+	var fonts, anim, c1, margin = 10, speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
 	var font = Render.AddFont("Segoe UI", 7, 600);
-	var fonta = Render.AddFont("Segoe UI", 5, 600);
-	var idfont = Render.AddFont("Tahoma", 7, 500);
-	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
-	var margin = 10;
-	var anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255
 	var x = ScreenSize[0] / 2;
 	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "Indicators", "Indicators Y offset");
-	var idy = type === 3 ? 30 : 0
 	var centered = +GUI.GetValue("Visuals", "Indicators", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "Indicators", "Indicators type");
+	var isDefault = !type, isAcidtech = type === 1, isKillaura = type === 2, isIdealYaw = type === 3;
 	var inv = GUI.GetValue("Visuals", "Indicators", "Inverter check")
 	var custom_color = (GUI.GetValue("Visuals", "Indicators", "Indicators custom color") ? GUI.GetColor("Visuals", "Indicators", "Indicators custom color") : false);
-	var def = [custom_color[0] || 193, custom_color[1] || 199, custom_color[2] || 255, anim]
-	real_yaw = Local.GetRealYaw();
-	fake_yaw = Local.GetFakeYaw();
-	delta = Math.min(Math.abs(real_yaw - fake_yaw) / 2, 60).toFixed(0) - 15
-	c1 = (custom_color || [193, 199, 255, 255])
-	c2 = [255, 255, 255, 255]
-	c3 = (custom_color ? custom_color : GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta") ? [29, 180, 29, 255] : delta < 14 ? [220, 0, 29, 200] : [220, 135, 49, 255])
-	x = (type === 1 || type === 3) ? x + (centered ? 0 : 5) : (type === 2) ? x + (centered ? 0 : 2) : x;
-	if (type === 1) {
+	var white = [255, 255, 255, 255];
+	var delta = getAntiaimDelta();
+	
+	x = (isAcidtech || isIdealYaw) ? x + (centered ? 0 : 5) : isKillaura ? x + (centered ? 0 : 2) : x;
+	var isInverted = isRealInverted();
+	var fonts = font;
+
+	//Animation and colors for Killaura and Acidtech
+	if(isAcidtech || isKillaura){
+		anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255;
+		def = [custom_color[0] || 193, custom_color[1] || 199, custom_color[2] || 255, anim];
+		c1 = (custom_color || [193, 199, 255, 255])
+	}
+	if (isAcidtech) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isRealInverted() ? c1 : c2), font);
-			Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isRealInverted() ? c2 : c1), font);
+			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "OTC", (isInverted ? c1 : white), font);
+			Render.StringCustom(x + 9 * (centered ? 1 : 2), y, centered, "SYNC", (isInverted ? white : c1), font);
 		}
 		else Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
 	}
-	else if (type === 2) {
+	else if (isKillaura) {
+		fonts = fonta = Render.AddFont("Segoe UI", 5, 600);
 		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, inv ? 255 : anim], font);
 		if(inv){
-			Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isRealInverted() ? c1 : c2), font);
-			Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isRealInverted() ? c2 : c1), font);
+			Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isInverted ? c1 : white), font);
+			Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isInverted ? white : c1), font);
 		} else Render.StringCustom(x, y, centered, "otcsync", def, font);
 		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
 		if (centered) Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
 	}
-	else if (type === 3) {
+	else if (isIdealYaw) {
+		fonts = idfont = Render.AddFont("Tahoma", 7, 500);
 		Render.StringCustom(x, y + 2, centered, "IDEAL YAW", [0, 0, 0, 255], idfont);
+		c3 = (custom_color ? custom_color : lowdeltaActive ? [29, 180, 29, 255] : delta < 14 ? [220, 0, 29, 200] : [220, 135, 49, 255]);
 		if(inv){
-			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "IDEAL", (isRealInverted() ? c3 : c2), idfont);
-			Render.StringCustom(x + 15.5 * (centered ? 1.05 : 2), y, centered, "YAW", (isRealInverted() ? c2 : c3), idfont);
+			Render.StringCustom(x - 12 / (centered ? 1 : -20), y, centered, "IDEAL", (isInverted ? c3 : white), idfont);
+			Render.StringCustom(x + 15.5 * (centered ? 1.05 : 2), y, centered, "YAW", (isInverted ? white : c3), idfont);
 		}
 		else Render.StringCustom(x, y, centered, "IDEAL YAW", c3, idfont);
 		Render.StringCustom(x, y + 12, centered, aa, [0, 0, 0, 255], idfont);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [209, 159, 230, 255], idfont);
-		Render.StringCustom(x, y + 22, centered, "DT", [0, 0, 0, 255], idfont)
-		Render.StringCustom(x, y + 20, centered, "DT", UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") ? [163, 213 * Exploit.GetCharge(), 117 * Exploit.GetCharge(), 255] : [163, 0, 0, 255], idfont)
 	}
 	for (indicator_path in indicators_paths) {
-		fonts = type === 3 ? idfont : type === 2 ? fonta : font
-		var not_draw = type === 1 || type === 3
-		var indicator = indicators_paths[indicator_path];
-		var active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9)/* && !local_buymenu_opened*/;
+		var indicator = indicators_paths[indicator_path], color = custom_color || indicator[3], active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9);
+		var not_draw = isAcidtech || isIdealYaw;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
-		var marginy = type === 1 ? 20 : type === 2 ? 15 : 0;
-		var cY = y - margin + (type === 3 ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + 1 + marginy;
-		var color = custom_color || indicator[3];
+		var marginy = (isAcidtech ? 20 : isKillaura ? 15 : 0) + 1;
+		var cY = y - margin + (isIdealYaw ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + marginy;
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_draw && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
-		if (type === 3 && ~("dt     ").indexOf(text)) continue;
-		text = (type !== 0 && text == "auto") ? "peek" : text;
-		text = (type === 3 && text == "fd") ? "duck" : text;
-		text = (type !== 0) ? text.toUpperCase() : text;
-		Render.StringCustom(x, cY + idy + (type === 3 || type === 2 ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], fonts);
-		Render.StringCustom(x, cY + idy + (type === 2 ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], fonts);
+		text = (!isDefault && text == "auto") ? "peek" : text;
+		text = (isIdealYaw && text == "fd") ? "duck" : text;
+		text = (!isDefault) ? text.toUpperCase() : text;
+
+		Render.StringCustom(x, cY + (isIdealYaw || isKillaura ? 2 : 1), centered, text, [0, 0, 0, Math.floor(indicator[4] / 1.33)], fonts);
+		Render.StringCustom(x, cY + (isKillaura ? 1 : 0), centered, text, [color[0], color[1], color[2], indicator[4]], fonts);
+
 		y += (indicator[4] / 255) * margin;
 	}
 }
