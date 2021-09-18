@@ -65,6 +65,7 @@ var GUI = Duktape.compact({
 	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30},
 	_SubmenuTriggerAnimations: {},
 	_SubmenuAnimations: [0, 0],
+	_LoadedCount: 0,
 	ElementProto: {},
 	ContainerWidth: 270, //in gui.subtablistdraw
 	Render: [],
@@ -154,6 +155,10 @@ GUI.InitElements = function(){
 	UI.SetEnabled(si, "gui_x", 0);
 	UI.SetEnabled(si, "gui_y", 0);
 
+	GUI.LoadElements();
+}
+GUI.LoadElements = function(){
+	if(GUI._LoadedCount > 16) return true;
 	for(TabName in GUI._MenuElements){
 		for(SubtabName in GUI._MenuElements[TabName]){
 			for(Element in GUI._MenuElements[TabName][SubtabName]){
@@ -194,9 +199,11 @@ GUI.InitElements = function(){
 
 	if(GetVal("loaded")) GUI.ScriptIsLoaded = true;
 	UI.SetValue(si, "loaded", 1);
+
+	GUI._LoadedCount++;
 }
 GUI.Draw = function(){
-	UI.SetValue(si, "loaded", 1);
+	if(!GUI.LoadElements()) return;
 	GUI.CacheVariables();
 	if(GUI.ProcessAnimations()){
 		GUI.InitFonts();
@@ -209,8 +216,6 @@ GUI.Draw = function(){
 		GUI.ProcessDrag();
 	}
 	GUI.ResetHotkeyOverride();
-
-	//Cheat.Print((performance.now() - GUI.DrawTime).toFixed(3) + "\n");
 }
 GUI.DrawMenu = function(){
 	var MenuX = Easing(GUI.X + GUI.Scale(GUI.Width) / 2, GUI.X, GUI._MenuAnimation[0]);
@@ -1138,8 +1143,6 @@ GUI.ProcessAnimations = function(){
 	}
 	GUI._MenuAnimation[0] = Clamp(GUI._MenuAnimation[0], 0, 1);
 	GUI._MenuAnimation[1] = Clamp(GUI._MenuAnimation[1], 0, 1);
-
-	GUI.DrawTime = performance.now();
 	if(GUI._MenuAnimation[0] === 0) return false;
 	return true;
 }
@@ -1273,6 +1276,12 @@ GUI.CacheVariables = function(){
 	CursorPos = Input.GetCursorPosition();
 	local = Entity.GetLocalPlayer();
 	isAlive = Entity.IsAlive(local);
+}
+GUI.Performance = function(fn){
+	var time = performance.now();
+	var args = [].concat(arguments).shift();
+	fn.apply(null, args);
+	Render.String(2, 2, 0, (performance.now() - time).toFixed(3) + "", [255, 255, 255, 255]);
 }
 GUI.CreateMove = function(){
 }
@@ -1894,7 +1903,7 @@ GUI.AddCheckbox("Nade prediction", 27).additional("color");
 GUI.AddCheckbox("Line tracer", 61).master("Nade prediction").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Trail", 29).additional("color");
 GUI.AddCheckbox("Rainbow", 66).master("Trail").flags(GUI.SAME_LINE)
-GUI.AddSlider("Length", 0, 500, 14).master("Trail");
+GUI.AddSlider("Length", 0, 200, 25).master("Trail");
 GUI.AddCheckbox("Party Zeus", 21);
 
 GUI.AddSubtab("Players");
@@ -1907,6 +1916,7 @@ GUI.AddCheckbox("Better glow chams", 8).additional("color");
 GUI.AddCheckbox("Hollow", 3).master("Better glow chams").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Pulse", 46).master("Better glow chams");
 GUI.AddCheckbox("Wireframe", 30).master("Better glow chams").flags(GUI.SAME_LINE);
+GUI.AddSlider("Vibrancy", 0, 100, 80).master("Better glow chams");
 
 GUI.AddSubtab("Local");
 GUI.AddCheckbox("Agent changer", 26);
@@ -2559,37 +2569,30 @@ function jumpscout(enemy){
 	if(isInAir()) Ragebot.ForceTargetHitchance(enemy, 40);
 }
 
-var pos = []
-function trailcm(){
-    var local = Entity.GetLocalPlayer()
-    pos.unshift(Entity.GetRenderOrigin(local))
+var trailpos = []
+function trailCreateMove(){
+	if(!local || !isAlive) return;
+    trailpos.unshift(Entity.GetRenderOrigin(local));
     var length = GUI.GetValue("Visuals", "World", "Length")
-    if(pos.length > length)
-    {
-        pos.pop()
-    }
+    if(trailpos.length > length) trailpos.pop()
 }
-function rentrail(){
+function renderTrail(){
     if(!isAlive) return
     if(!GUI.GetValue("Visuals", "World", "Trail")) return
+	if(trailpos.length < 1) return
     var first = true, last = []
-    if(pos.length < 1) return
     var color = GUI.GetColor("Visuals", "World", "Trail");
     var rgb = GUI.GetValue("Visuals", "World", "Rainbow");
-    for(i in pos){
-        var w2s = Render.WorldToScreen(pos[i])
+    for(i in trailpos){
+        var w2s = Render.WorldToScreen(trailpos[i])
         if(rgb) rgbcolor = GUI.Colors.HSVToRGB([Globals.Realtime() + (i / 200) % 1, 1, 1]), rgbcolor[3] = color[3], color = rgbcolor;
         if(!first) Render.Line(w2s[0], w2s[1], last[0], last[1], color);
         first = false
         last = w2s
     }
 }
-function resettrail(){
-    pos = []
-}
-Cheat.RegisterCallback("round_start", "resettrail")
-Cheat.RegisterCallback("Draw", "rentrail")
-Cheat.RegisterCallback("CreateMove", "trailcm")
+Cheat.RegisterCallback("Draw", "renderTrail")
+Cheat.RegisterCallback("CreateMove", "trailCreateMove")
 
 var legbreaker_delay = 0;
 var fakelag_leg = false;
@@ -2905,7 +2908,7 @@ function staticLegs(){
 		fakelag = 2;
 		mov = [cur[0] / 7, cur[1] / 7, cur[2]];
 	}*/
-	if(breakmode) cur = UserCMD.GetMovement(), mov = [-cur[0] * 1.5, -cur[1] * 1.5, -cur[2]];
+	if(breakmode) m = UserCMD.GetMovement(), mov = [-m[0] * 1.5, -m[1] * 1.5, -m[2]];
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
 			UI.SetValue("Anti-Aim", "Fake-Lag", "Limit", fakelag);
@@ -3555,7 +3558,7 @@ function indicators(){
 		var cY = y - margin + (isIdealYaw ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + marginy;
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_draw && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
-		if (isIdealYaw && ~("DT").indexOf(text)) continue;
+		if (isIdealYaw && text == "DT") continue;
 		text = (!isDefault && text == "auto") ? "peek" : text;
 		text = (isIdealYaw && text == "fd") ? "duck" : text;
 		text = (!isDefault) ? text.toUpperCase() : text;
@@ -4101,9 +4104,7 @@ Global.RegisterCallback("buymenu_open", "buymenuOpen");
 
 function playerDeath(){
 	var player = Entity.GetEntityFromUserID(Event.GetInt("userid"));
-	if(player == local){
-		local_buymenu_opened = false;
-	}
+	if(player == local) local_buymenu_opened = false;
 }
 Global.RegisterCallback("player_death", "playerDeath");
 
@@ -4209,12 +4210,25 @@ function freestanding(){
 Cheat.RegisterCallback("CreateMove", "freestanding");
 
 //Clean up
-function resetVars(){
+function resetVarsOnConnect(){
 	if(Entity.GetEntityFromUserID(Event.GetInt("userid")) != local) return;
-	last_leg_pos = spectators_alpha = defensive_pos = tracer_lines = pmolotov = hits = lines = last_shot_time = [];
+	last_leg_pos = [], spectators_alpha = [], defensive_pos = [], tracer_lines = [], pmolotov = [], hits = [], lines = [], last_shot_time = [], trailpos = [];
 	hideshots_enable_time = false;
 }
-Global.RegisterCallback("player_connect_full", "resetVars");
+Global.RegisterCallback("player_connect_full", "resetVarsOnConnect");
+
+function resetVarsOnDeath(){
+	if(Entity.GetEntityFromUserID(Event.GetInt("userid")) != local) return;
+	last_leg_pos = [], defensive_pos = [], tracer_lines = [], last_shot_time = [], trailpos = [];
+	hideshots_enable_time = false;
+}
+Global.RegisterCallback("player_death", "resetVarsOnDeath");
+
+function resetVarsOnNewRound(){
+	last_leg_pos = [], defensive_pos = [], tracer_lines = [], pmolotov = [], hits = [], lines = [], last_shot_time = [], trailpos = [];
+	hideshots_enable_time = false;
+}
+Global.RegisterCallback("round_start", "resetVarsOnNewRound")
 
 function defensiveDTAfterShot(){
 	if(GUI.GetValue("Rage", "Doubletap", "DT Boost") !== 1 || !local || !exploitsActive("dt") ||Entity.GetEntityFromUserID(Event.GetInt("userid")) != local) return;
@@ -4325,6 +4339,45 @@ function autoPeekHelperHSTP(){
 	hideshots_enable_time = Globals.Tickcount() + 32;
 }
 Global.RegisterCallback("ragebot_fire", "autoPeekHelperHSTP");
+
+function betterGlowChams(){
+	if(!GUI.GetValue("Visuals", "Players", "Better glow chams")) return;
+    var index = Material.Get("Better glow");
+    if (index > 0){
+        Material.SetKeyValue(index, "$baseTexture", "vgui/white");
+        Material.SetKeyValue(index, "$additive", GUI.GetValue("Visuals", "Players", "Hollow") ? "1" : "0")
+        Material.SetKeyValue(index, "$envmap", "models/effects/cube_white")
+        Material.SetKeyValue(index, "$envmapfresnel", "1")
+        
+		var color = GUI.GetColor("Visuals", "Players", "Better glow chams");
+        if(GUI.GetValue("Visuals", "Players", "Pulse")){
+            var sine = (Math.sin(Globals.Realtime() * 7) + 5) * 0.6;
+            color[0] *= sine
+            color[1] *= sine
+            color[2] *= sine
+        }
+        Material.SetKeyValue(index, "$wireframe", GUI.GetValue("Visuals", "Players", "Wireframe") ? "1" : "0");
+        var vibrancy = GUI.GetValue("Visuals", "Players", "Vibrancy") / 10;
+        Material.SetKeyValue(index, "$envmapfresnelminmaxexp",  "[0 " + (11 - vibrancy) + " " + ((11 - vibrancy) * 2) + "]");
+        Material.SetKeyValue(index, "$envmaptint", "[" + color[0] / 255 + " " + color[1] / 255 + " " + color[2] / 255 + "]");
+        Material.SetKeyValue(index, "$alpha", color[3] / 255 + "");
+        Material.Refresh(index);
+    }
+}
+Global.RegisterCallback("Material", "betterGlowChams");
+var betterGlowChamsRegistered = false;
+function registerBetterGlowChams(){
+	if(!GUI.GetValue("Visuals", "Players", "Better glow chams")){
+		betterGlowChamsRegistered = false;
+        Material.Destroy("Better glow");
+    	return;
+	}
+	if(!betterGlowChamsRegistered){
+		Material.Create("Better glow");
+		betterGlowChamsRegistered = true;
+	}
+}
+Global.RegisterCallback("Draw", "registerBetterGlowChams");
 
 //Clean up
 Duktape.gc();
