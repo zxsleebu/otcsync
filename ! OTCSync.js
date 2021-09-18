@@ -1788,7 +1788,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 65
+//Last index is 67
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1893,6 +1893,8 @@ GUI.AddSlider("World brightness", -50, 0, 0);
 GUI.AddCheckbox("Nade prediction", 27).additional("color");
 GUI.AddCheckbox("Line tracer", 61).master("Nade prediction").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Trail", 29).additional("color");
+GUI.AddCheckbox("Rainbow", 66).master("Trail").flags(GUI.SAME_LINE)
+GUI.AddSlider("Length", 0, 500, 14).master("Trail");
 GUI.AddCheckbox("Party Zeus", 21);
 
 GUI.AddSubtab("Players");
@@ -2556,6 +2558,38 @@ Global.RegisterCallback("Draw", "mindamage");
 function jumpscout(enemy){
 	if(isInAir()) Ragebot.ForceTargetHitchance(enemy, 40);
 }
+
+var pos = []
+function trailcm(){
+    var local = Entity.GetLocalPlayer()
+    pos.unshift(Entity.GetRenderOrigin(local))
+    var length = GUI.GetValue("Visuals", "World", "Length")
+    if(pos.length > length)
+    {
+        pos.pop()
+    }
+}
+function rentrail(){
+    if(!isAlive) return
+    if(!GUI.GetValue("Visuals", "World", "Trail")) return
+    var first = true, last = []
+    if(pos.length < 1) return
+    var color = GUI.GetColor("Visuals", "World", "Trail");
+    var rgb = GUI.GetValue("Visuals", "World", "Rainbow");
+    for(i in pos){
+        var w2s = Render.WorldToScreen(pos[i])
+        if(rgb) rgbcolor = GUI.Colors.HSVToRGB([Globals.Realtime() + (i / 200) % 1, 1, 1]), rgbcolor[3] = color[3], color = rgbcolor;
+        if(!first) Render.Line(w2s[0], w2s[1], last[0], last[1], color);
+        first = false
+        last = w2s
+    }
+}
+function resettrail(){
+    pos = []
+}
+Cheat.RegisterCallback("round_start", "resettrail")
+Cheat.RegisterCallback("Draw", "rentrail")
+Cheat.RegisterCallback("CreateMove", "trailcm")
 
 var legbreaker_delay = 0;
 var fakelag_leg = false;
