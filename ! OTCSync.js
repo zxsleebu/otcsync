@@ -2642,9 +2642,10 @@ function lowdelta(){
 	lowdelta_active = true;
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Yaw offset", 0);
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset", 0);
+	inv = (isInverted() && 1 || -1)
 	AntiAim.SetOverride(1);
-	AntiAim.SetRealOffset(-20);
-	AntiAim.SetLBYOffset(18);
+	AntiAim.SetRealOffset(20 * inv);
+	AntiAim.SetLBYOffset(-18 * inv);
 }
 
 Global.RegisterCallback("CreateMove", "lowdelta");
