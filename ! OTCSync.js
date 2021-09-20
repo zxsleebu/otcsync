@@ -3690,7 +3690,7 @@ var keybinds_paths = [
 	["Min-dmg override 2",	["Rage", "Min-DMG Override", "Min-damage override 2"],	true,											GUI.IsHotkeyActive,		0],
 	["Doubletap",			["Rage", "GENERAL", "Exploits", "Doubletap"],			["Misc", "Keybinds fixer", "Doubletap"],		UI.IsHotkeyActive,		0],
 	["Hide shots",			["Rage", "GENERAL", "Exploits", "Hide shots"],			["Misc", "Keybinds fixer", "Hide shots"],		UI.IsHotkeyActive,		0],
-	["Ping Spike",		    ["Rage", "Other", "Extended backtracking"],			    true,											GUI.IsHotkeyActive,		0],
+	["Ping Spike",		        ["Rage", "Other", "Extended backtracking"],			    true,											GUI.IsHotkeyActive,		0],
 	["Force backshoot",		["Rage", "Other", "Force backshoot"],					true,											GUI.IsHotkeyActive,		0],
 	["Fake duck",			["Anti-Aim", "Extra", "Fake duck"],						["Misc", "Keybinds fixer", "Fake duck"],		UI.IsHotkeyActive,		0],
 	["Lowdelta", 			["Anti-Aim", "General", "Lowdelta"],					true,											GUI.IsHotkeyActive,		0],
