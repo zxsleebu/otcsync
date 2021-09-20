@@ -2594,6 +2594,13 @@ function renderTrail(){
 Cheat.RegisterCallback("Draw", "renderTrail")
 Cheat.RegisterCallback("CreateMove", "trailCreateMove")
 
+function partyZeus(){
+	if(GUI.GetValue("Visuals", "World", "Party Zeus")) return
+	Convar.SetString("sv_party_mode", "1")
+}
+
+Cheat.RegisterCallback("CreateMove", "partyZeus")
+
 var legbreaker_delay = 0;
 var fakelag_leg = false;
 function legbreaker(){
@@ -3683,6 +3690,7 @@ var keybinds_paths = [
 	["Min-dmg override 2",	["Rage", "Min-DMG Override", "Min-damage override 2"],	true,											GUI.IsHotkeyActive,		0],
 	["Doubletap",			["Rage", "GENERAL", "Exploits", "Doubletap"],			["Misc", "Keybinds fixer", "Doubletap"],		UI.IsHotkeyActive,		0],
 	["Hide shots",			["Rage", "GENERAL", "Exploits", "Hide shots"],			["Misc", "Keybinds fixer", "Hide shots"],		UI.IsHotkeyActive,		0],
+	["Ping Spike",		    ["Rage", "Other", "Extended backtracking"],			    true,											GUI.IsHotkeyActive,		0],
 	["Force backshoot",		["Rage", "Other", "Force backshoot"],					true,											GUI.IsHotkeyActive,		0],
 	["Fake duck",			["Anti-Aim", "Extra", "Fake duck"],						["Misc", "Keybinds fixer", "Fake duck"],		UI.IsHotkeyActive,		0],
 	["Lowdelta", 			["Anti-Aim", "General", "Lowdelta"],					true,											GUI.IsHotkeyActive,		0],
@@ -4209,6 +4217,12 @@ function freestanding(){
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction", GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding"));
 }
 Cheat.RegisterCallback("CreateMove", "freestanding");
+
+function extendedBacktracking(){
+	UI.SetValue("Misc", "GENERAL", "Miscellaneous", "Extended backtracking", GUI.IsHotkeyActive("Rage", "Other", "Extended backtracking"))
+}
+
+Cheat.RegisterCallback("CreateMove", "extendedBacktracking");
 
 //Clean up
 function resetVarsOnConnect(){
