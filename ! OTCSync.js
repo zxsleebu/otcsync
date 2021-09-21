@@ -1797,7 +1797,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 67
+//Last index is 68
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1947,7 +1947,8 @@ GUI.AddSubtab("Indicators");
 GUI.AddCheckbox("Indicators", 32).additional("submenu");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
-GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Killaura', 'IDEAL YAW']).master("Indicators");
+GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Acidtech v2', 'Killaura', 'IDEAL YAW']).master("Indicators");
+GUI.AddCheckbox("Desync line", 67).master("Indicators")
 GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
 GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
 
@@ -3472,7 +3473,7 @@ function renderDtCircle(x, y, col){
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
-	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 3) return "DT";
+	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 2 && 4) return "DT";
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
 	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
 	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
@@ -3507,21 +3508,23 @@ function indicators(){
 	var y = ScreenSize[1] / 2 + 9 + 10 + GUI.GetValue("Visuals", "Indicators", "Indicators Y offset");
 	var centered = +GUI.GetValue("Visuals", "Indicators", "Indicators centered");
 	var type = GUI.GetValue("Visuals", "Indicators", "Indicators type");
-	var isDefault = !type, isAcidtech = type === 1, isKillaura = type === 2, isIdealYaw = type === 3;
+	var isDefault = !type, isAcidtech = type === 1, isKillaura = type === 2 || type === 3, isIdealYaw = type === 4;
 	var inv = GUI.GetValue("Visuals", "Indicators", "Inverter check")
 	var custom_color = (GUI.GetValue("Visuals", "Indicators", "Indicators custom color") ? GUI.GetColor("Visuals", "Indicators", "Indicators custom color") : false);
 	var white = [255, 255, 255, 255];
 	var delta = getAntiaimDelta();
+	var des = GUI.GetValue("Visuals", "Indicators", "Desync line")
 	
 	x = (isAcidtech || isIdealYaw) ? x + (centered ? 0 : 5) : isKillaura ? x + (centered ? 0 : 2) : x;
 	var isInverted = isRealInverted();
 	var fonts = font;
+	var addy = 0
+	var c1 = (custom_color || [193, 199, 255, 255])
 
 	//Animation and colors for Killaura and Acidtech
 	if(isAcidtech || isKillaura){
 		anim = Math.sin(Math.abs(-Math.PI + (Globals.Curtime() * (1 / 0.5)) % (Math.PI * 2))) * 255;
 		def = [custom_color[0] || 193, custom_color[1] || 199, custom_color[2] || 255, anim];
-		c1 = (custom_color || [193, 199, 255, 255])
 	}
 	if (isAcidtech) {
 		Render.StringCustom(x, y + 1, centered, "OTCSYNC", [0, 0, 0, inv ? 255 : anim], font);
@@ -3532,16 +3535,18 @@ function indicators(){
 		else Render.StringCustom(x, y, centered, "OTCSYNC", def, font)
 		Render.StringCustom(x, y + 11, centered, aa, [0, 0, 0, 255], font);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [193, 199, 255, 255], font);
-	}
+		addy = des ? 10 : 0
+ 	}
 	else if (isKillaura) {
 		fonts = fonta = Render.AddFont("Segoe UI", 5, 600);
 		Render.StringCustom(x, y + 1, centered, "otcsync", [0, 0, 0, inv ? 255 : anim], font);
+		co1 = type === 2 ? custom_color || [189, 209, 126, 255] : c1
 		if(inv){
-			Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isInverted ? c1 : white), font);
-			Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isInverted ? white : c1), font);
-		} else Render.StringCustom(x, y, centered, "otcsync", def, font);
-		Render.FilledRect(x, y + 15, (45 / 60) * delta, 2, c1);
-		if (centered) Render.FilledRect(x - (45 / 60) * delta + 1, y + 15, (45 / 60) * delta, 2, c1);
+			Render.StringCustom(x - 9 / (centered ? 1 : -17), y, centered, "otc", (isInverted ? co1 : white), font);
+			Render.StringCustom(x + 6 * (centered ? 1.2 : 2.4), y, centered, "sync", (isInverted ? white : co1), font);
+		} else Render.StringCustom(x, y, centered, "otcsync", def, font)
+		if (type === 2) Render.Circle(x + (centered ? 18 : 34) + 1, y + 5, 1, [0, 0, 0, inv ? 255 : anim]), Render.Circle(x + (centered ? 18 : 34), y + 4, 1, inv ? (isInverted ? white : co1) : def);
+		addy = des ? 0 : -5
 	}
 	else if (isIdealYaw) {
 		fonts = idfont = Render.AddFont("Tahoma", 7, 500);
@@ -3554,16 +3559,22 @@ function indicators(){
 		else Render.StringCustom(x, y, centered, "IDEAL YAW", c3, idfont);
 		Render.StringCustom(x, y + 12, centered, aa, [0, 0, 0, 255], idfont);
 		Render.StringCustom(x, y + 10, centered, aa, custom_color || [209, 159, 230, 255], idfont);
-		Render.StringCustom(x, y + 22, centered, "DT", [0, 0, 0, 255], idfont)
-		var ch = Exploit.GetCharge()
-		Render.StringCustom(x, y + 20, centered, "DT", UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") ? [163, 213 * ch, 117 * ch, 255] : [163, 0, 0, 255], idfont)
+		Render.StringCustom(x, y + 22, centered, "DT", [0, 0, 0, 255], idfont);
+		var ch = Exploit.GetCharge();
+		Render.StringCustom(x, y + 20, centered, "DT", exploitsActive("dt") ? [163, 213 * ch, 117 * ch, 255] : [163, 0, 0, 255], idfont);
+	}
+	if(des){
+	ay = isAcidtech ? 25 : isKillaura ? 14 : centered && isIdealYaw ? -3 : isIdealYaw ? -2 : 0
+	c1 = isIdealYaw ? c3 : c1
+	Render.FilledRect(x, y + ay, (45 / 60) * delta, 2, c1);
+	if (centered) Render.FilledRect(x - (45 / 60) * delta + 1, y + ay, (45 / 60) * delta, 2, c1); 
 	}
 	for (indicator_path in indicators_paths) {
 		var indicator = indicators_paths[indicator_path], color = custom_color || indicator[3], active = indicator[2].apply(null, indicator[1]) && !Input.IsKeyPressed(9);
 		var not_draw = isAcidtech || isIdealYaw;
 		if ((indicator[4] = Clamp(indicator[4] += speed * (active && 1 || -1), 0, 255)) <= 0) continue;
 		var marginy = (isAcidtech ? 20 : isKillaura ? 15 : 0) + 1;
-		var cY = y - margin + (isIdealYaw ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + marginy;
+		var cY = y - margin + addy + (isIdealYaw ? 30 : 0) + Math.floor((indicator[4] / 255) * margin) + marginy;
 		var text = ((typeof indicator[0] === "function") ? indicator[0](x, cY, centered, color, indicator) : indicator[0]);
 		if (not_draw && ~("lowdelta|legit aa|freestand".split("|")).indexOf(text)) continue;
 		if (isIdealYaw && text == "DT") continue;
