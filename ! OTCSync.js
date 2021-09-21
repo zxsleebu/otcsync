@@ -3473,7 +3473,7 @@ function renderDtCircle(x, y, col){
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
-	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 2 && 4) return "DT";
+	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 2 || 4) return "DT";
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
 	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
 	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
