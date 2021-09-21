@@ -1958,7 +1958,7 @@ GUI.AddCheckbox("Show icon", 65).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
-GUI.AddCheckbox("Hit logs", 35).additional("color");
+GUI.AddCheckbox("Hitlogs under crosshair", 35).additional("color");
 GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']);
 GUI.AddColor("Menu accent");
 
@@ -3047,6 +3047,37 @@ function autoInvert() {
 }
 
 Global.RegisterCallback("Draw", "autoInvert");
+
+var logs = [];
+
+const log = function(text, time){
+    this.text = text
+    this.time = time
+}
+
+const hitboxes = [ "generic", "head", "chest", "stomach", "left arm", "right arm", "left leg", "right leg", "body" ];
+
+const get_hitbox = function(i){ return hitboxes[i] || "Generic" };
+
+function hitlogs(){
+    const uid = Entity.GetEntityFromUserID(Event.GetInt("userid"));
+    const attacker = Entity.GetEntityFromUserID(Event.GetInt("attacker"));
+    const text = "hurt " + Entity.GetName(uid) + " for " + Event.GetInt("dmg_health") + " in " + get_hitbox(Event.GetInt("hitgroup"));
+
+    if(Entity.IsLocalPlayer(attacker) && attacker != uid) logs.push(new log(text, Globals.Tickcount()));
+}
+
+function drawhurt(){
+    const font = Render.AddFont("Calibri", 10, 100);
+	if(!GUI.GetValue("Visuals", "GUI", "Hitlogs under crosshair")) return;
+    for (var i in logs){
+        Render.StringCustom(ScreenSize[0] /2, ScreenSize[1] /2 + 190 - (i * -15), 1, logs[i].text, GUI.GetColor("Visuals", "GUI", "Hitlogs under crosshair"), font);
+        if (logs[i].time + 300 < Globals.Tickcount() || logs.length > 6) logs.shift();
+    }
+}
+
+Cheat.RegisterCallback("Draw", "drawhurt");
+Cheat.RegisterCallback("player_hurt", "hitlogs");
 
 var mm_fakeduck_active = false;
 var fd_crouch = true;
