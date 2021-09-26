@@ -2596,8 +2596,11 @@ Cheat.RegisterCallback("Draw", "renderTrail")
 Cheat.RegisterCallback("CreateMove", "trailCreateMove")
 
 function partyZeus(){
-	if(GUI.GetValue("Visuals", "World", "Party Zeus")) return
+	if(GUI.GetValue("Visuals", "World", "Party Zeus")){
 	Convar.SetString("sv_party_mode", "1")
+    }else{
+    Convar.SetString("sv_party_mode", "0")
+    }
 }
 
 Cheat.RegisterCallback("CreateMove", "partyZeus")
