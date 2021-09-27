@@ -1,10 +1,4 @@
 //GUI Library Definition
-getMethods = function(obj){return Object.getOwnPropertyNames(obj).filter(function(item){
-	return  typeof obj[item] === 'function';
-})};
-function ptr(obj){
-	return Duktape.Pointer(obj).toString();
-}
 (function CreateErrorHandler(fnCallback) {
 	Duktape.errCreate = function (e) {
 		if (!(e instanceof Error) || 'thrown' in e || !Object.isExtensible(e)) return e;
@@ -17,7 +11,6 @@ function ptr(obj){
 	Cheat.PrintColor([255, 74, 74, 255], "Information for the developer: error at line " + e.lineNumber + "\n");
 	return e;
 });
-var ScreenSize = Render.GetScreenSize();
 const si = "Script items";
 var GUI = Duktape.compact({
 	BackgroundOpacity: 0,
@@ -25,8 +18,8 @@ var GUI = Duktape.compact({
 	AnimationSpeed: 90,
 	X: 100,
 	Y: 100,
-	Width: 490,
-	Height: 330,
+	Width: 510,
+	Height: 325,
 	Radius: 10,
 	SubtabListWidth: 150,
 	SubtabListWidthScaled: 150,
@@ -62,7 +55,7 @@ var GUI = Duktape.compact({
 	_DropdownPos: [0, 0],
 	_DropdownWidth: 100,
 	_DropdownSelectingElement: false,
-	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30},
+	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30, "multidropdown": 50},
 	_SubmenuTriggerAnimations: {},
 	_SubmenuAnimations: [0, 0],
 	_LoadedCount: 0,
@@ -127,11 +120,17 @@ GUI.InitElements = function(){
 						GUI.ColorPickers.push(Element);
 						UI.AddColorPicker(Element);
 						UI.SetEnabled(si, Element, 0);
+						UI.SetColor(si, Element, GUI.Colors.ActiveElement);
 						break;
 					}
 					case "dropdown": {
 						if(Elem.Flags & GUI.NOT_SAVEABLE) break;
 						UI.AddDropdown(Element, Elem.Elements);
+						UI.SetEnabled(si, Element, 0);
+						break;
+					}
+					case "multidropdown": {
+						UI.AddMultiDropdown(Element, Elem.Elements);
 						UI.SetEnabled(si, Element, 0);
 						break;
 					}
@@ -149,11 +148,11 @@ GUI.InitElements = function(){
 		}
 	}
 
-	UI.AddSliderInt("gui_x", -GUI.Scale(GUI.Width), ScreenSize[0]);
-	UI.AddSliderInt("gui_y", 0, ScreenSize[1]);
-
-	UI.SetEnabled(si, "gui_x", 0);
-	UI.SetEnabled(si, "gui_y", 0);
+	//var ScreenSize = Render.GetScreenSize();
+	//UI.AddSliderInt("gui_x", -GUI.Scale(GUI.Width), ScreenSize[0]);
+	//UI.AddSliderInt("gui_y", 0, ScreenSize[1]);
+	//UI.SetEnabled(si, "gui_x", 0);
+	//UI.SetEnabled(si, "gui_y", 0);
 
 	GUI.LoadElements();
 }
@@ -191,6 +190,9 @@ GUI.LoadElements = function(){
 						var val = UI.GetValue(si, Element);
 						if(Elem.Elements[val] === undefined) UI.SetValue(si, Element, val = 0);
 						Elem.Value = val;
+						break;
+					case "multidropdown": 
+						Elem.Value = UI.GetValue(si, Element);
 						break;
 				}
 			}
@@ -464,6 +466,7 @@ GUI.RenderElement = function(E, x, y, id){
 		case "color":
 			GUI.DrawColor(x, y, E.Name, id);
 			break;
+		case "multidropdown":
 		case "dropdown":
 			GUI.DrawDropdown(x, y, E.Name, id);
 			break;
@@ -952,6 +955,7 @@ GUI.DrawDropdown = function (x, y, name, id){
 	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var ElementsWidths = [GUI.Scale(100)];
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
+	var IsMultiDropdown = Element.Type == "multidropdown";
 	var DropdownElements = Element.Elements;
 	var DropdownHeight = GUI.Scale(26);
 	for (DropdownElement in DropdownElements){
@@ -969,7 +973,16 @@ GUI.DrawDropdown = function (x, y, name, id){
 	if (!(Element.Flags & GUI.SAME_LINE)) Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
 	Render.SmoothRect(x, DropdownY, DropdownWidth, DropdownHeight, DropdownBorderColorAnimated);
 	Render.SmoothRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, DropdownColorAnimated);
-	Render.StringCustom(x + 5, DropdownY + 2, 0, DropdownElements[Element.Value], DropdownTextColor, GUI.Fonts.Menu);
+	var Val = DropdownElements[Element.Value];
+	if(IsMultiDropdown){
+		var elements = DropdownElements.filter(function(e, i){return Element.Value & (1 << i)});
+		var OriginalVal = elements.join(", ");
+		var Times = GUI.Scale(6);
+		Val = OriginalVal.slice(0, Math.floor(DropdownWidth / Times - Times));
+		if (OriginalVal !== Val) Val += "...";
+		Val = Val || "None";
+	}
+	Render.StringCustom(x + 5, DropdownY + 2, 0, Val, DropdownTextColor, GUI.Fonts.Menu);
 	Render.Polygon([[x + DropdownWidth - 5 - 6, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 + 1, DropdownY + DropdownHeight / 2 - 2], [x + DropdownWidth - 5 - 3, DropdownY + DropdownHeight / 2 + 2]], DropdownBorderColorAnimated);
 	var OtherElementsActive = !GUI._SliderChanging && !GUI._ColorPickerOpened && !GUI._ColorMenuOpened && !GUI._HotkeyMenuOpened && GUI._HotkeyMenuAnimation[0] === 0 && GUI._ColorMenuAnimation[0] === 0;
 	if (UI.IsCursorInBox(x, DropdownY, DropdownWidth, DropdownHeight) && OtherElementsActive && !GUI._DropdownOpened && GUI._DropdownAnimation[0] === 0){
@@ -1016,6 +1029,7 @@ GUI.DrawDropdownSelector = function(){
 
 	if (GUI._ClickBlock && !Input.IsKeyPressed(1)) GUI._ClickBlock = false;
 
+
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][GUI._DropdownActive];
 	var DropdownElements = Element.Elements;
 	var ElementHeight = GUI.Scale(26);
@@ -1026,16 +1040,17 @@ GUI.DrawDropdownSelector = function(){
 	var DropdownHeightAnimated = Easing(0, DropdownHeight, DropdownAnimation);
 	var DropdownColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, DropdownAnimation));
 	var DropdownBorderColor = GUI.Colors.GetColor(GUI.Colors.ActiveElement, Lerp(0, 255, DropdownTextAnimation));
+	var IsMultiDropdown = Element.Type == "multidropdown";
 
 	Render.SmoothRect(GUI._DropdownPos[0], GUI._DropdownPos[1], ElementWidth, DropdownHeightAnimated, DropdownBorderColor);
 	Render.SmoothRect(GUI._DropdownPos[0] + 1, GUI._DropdownPos[1] + 1, ElementWidth - 2, DropdownHeightAnimated - 2, DropdownColorAnimated);
 	Render.Line(GUI._DropdownPos[0], GUI._DropdownPos[1] + 2, GUI._DropdownPos[0], GUI._DropdownPos[1] + DropdownHeightAnimated - 2, DropdownBorderColor);
 
 	GUI._DropdownSelectingElement = false;
-	
+
 	for(Index in DropdownElements){
 		var ElementY = GUI._DropdownPos[1] + (ElementHeight * Index);
-		var IsActive = Element.Value == Index;
+		var IsActive = (!IsMultiDropdown) ? (Element.Value == Index) : (Element.Value & (1 << Index));
 		if (IsActive) GUI._DropdownAnimation[2][Index] += 0.08 * adapt;
 		var DropdownTextColor = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, GUI.Colors.HotkeyMenuTextActive, GUI._DropdownAnimation[2][Index]), Lerp(0, 255, DropdownTextAnimation));
 
@@ -1044,15 +1059,25 @@ GUI.DrawDropdownSelector = function(){
 			GUI._DropdownSelectingElement = true;
 			GUI._DropdownAnimation[2][Index] += 0.066 * adapt;
 			if (Input.IsKeyPressed(1) && !GUI._ClickBlock){
-				Element.SetValue(Index);
-				GUI._DropdownOpened = false;
-				GUI._DropdownSelectingElement = false;
+				if(!IsMultiDropdown){
+					Element.SetValue(Index);
+					GUI._DropdownOpened = false;
+					GUI._DropdownSelectingElement = false;
+				} 
+				else{
+					Element.SetValue(IsActive ? (Element.Value & ~(1 << Index)) : (Element.Value | (1 << Index)));
+					GUI._ClickBlock = true;
+				}
 			}
 		}
 		else{
-	GUI._DropdownAnimation[2][Index] -= 0.066 * adapt;
+			GUI._DropdownAnimation[2][Index] -= 0.066 * adapt;
 		}
 		GUI._DropdownAnimation[2][Index] = Clamp(GUI._DropdownAnimation[2][Index], 0, 1);
+	}
+
+	if(!Input.IsKeyPressed(1)){
+		GUI._ClickBlock = false;
 	}
 }
 GUI.DrawLabel = function(x, y, name){
@@ -1060,52 +1085,6 @@ GUI.DrawLabel = function(x, y, name){
 	var TextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	Render.StringCustom(x, y + GUI.Scale(12) + 2.6, 0, name, TextColor, GUI.Fonts.Menu);
 }
-/*GUI.DrawSubmenu = function(x, y, id){
-	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._MenuAnimation[4];
-	var w = 2 * parseInt(GUI.Scale(4) / 2);
-	var h = 2 * parseInt(GUI.Scale(6) / 2);
-	if(UI.IsCursorInBox(x - w * 2, y - h - 1, w * 5, h * 3 + 2)){
-		GUI._SubmenuTriggerAnimations[id] += 0.06;
-		if(Input.IsKeyPressed(1)){
-			GUI._SubmenuOpened = id;
-			GUI._SubmenuActive = id;
-		}
-	}
-	else GUI._SubmenuTriggerAnimations[id] -= 0.06;
-	
-	GUI._SubmenuTriggerAnimations[id] = Clamp(GUI._SubmenuTriggerAnimations[id], 0, 1);
-	var color = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.FadeColor(GUI.Colors.ArrowColor, GUI.Colors.Text, GUI._SubmenuTriggerAnimations[id]), Animation, GUI._MenuAnimation[1] * 255);
-	GUI.DrawRightArrow(x, y, w, h, color);
-	if (GUI._SubmenuOpened !== false) {
-		GUI._SubmenuAnimations[0] += 0.06;
-		if (GUI._SubmenuAnimations[0] >= 0.8) GUI._SubmenuAnimations[1] += 0.06;
-	}
-	else {
-		GUI._SubmenuAnimations[1] -= 0.06;
-		if (GUI._SubmenuAnimations[1] <= 0.2) GUI._SubmenuAnimations[0] -= 0.06;
-	}
-	GUI._SubmenuAnimations[0] = Clamp(GUI._SubmenuAnimations[0], 0, 1);
-	GUI._SubmenuAnimations[1] = Clamp(GUI._SubmenuAnimations[1], 0, 1);
-
-	if(GUI._SubmenuAnimations[0] === 0) return;
-	var Subtab = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab];
-	if(!(GUI._SubmenuActive in Subtab)) return;
-
-	var Height = 32;
-	var Width = 200;
-	for(Element in Subtab){
-		Element = Subtab[Element];
-		if(Element.SubmenuMaster === undefined) continue;
-		var ElementX = GUI.X + GUI.SubtabListWidthScaled + 16;
-		if(Element.Flags & GUI.SAME_LINE) Height -= GUI.Scale(GUI._ElementOffsets[Element.Type]); //CurrentSubtab[ElementIds[i - 1]].Type
-		ElementOffsetY += GUI.Scale(GUI._ElementOffsets[Element.Type]);
-	}
-
-	var Animation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._SubmenuAnimations[0];
-	var SecondaryAnimation = (GUI._MenuAnimation[1] < 1) ? GUI._MenuAnimation[1] : GUI._SubmenuAnimations[1];
-	var ColorAnimated = GUI.Colors.GetColor(GUI.Colors.Checkbox, Lerp(0, 255, Animation));
-	var HeightAnimated = Easing(0, Height, Animation);
-}*/
 GUI.ProcessDrag = function(){
 	if(!UI.IsMenuOpen()) return;
 	var HeaderLogoSize = Render.TextSizeCustom(GUI.LogoText, GUI.Fonts.HeaderLogo);
@@ -1119,8 +1098,6 @@ GUI.ProcessDrag = function(){
 		GUI._MenuIsMoving = true;
 		GUI.X = CursorPos[0] - GUI._OldCursor[0] + GUI.X;
 		GUI.Y = CursorPos[1] - GUI._OldCursor[1] + GUI.Y;
-		/*UI.SetValue(GUI.Paths["gui_x"], GUI.X);
-		UI.SetValue(GUI.Paths["gui_y"], GUI.Y);*/
 		GUI._OldCursor = CursorPos;
 	}
 
@@ -1130,15 +1107,11 @@ GUI.ProcessDrag = function(){
 GUI.ProcessAnimations = function(){
 	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	if(UI.IsMenuOpen()){
-		if(GUI._MenuAnimation[0] > 0.8){
-			GUI._MenuAnimation[1] += 0.07 * adapt;
-		}
+		if(GUI._MenuAnimation[0] > 0.8) GUI._MenuAnimation[1] += 0.07 * adapt;
 		GUI._MenuAnimation[0] += ((GUI._MenuAnimation[0] < 0.75) ? 0.04 : 0.02) * adapt;
 	}
 	else{
-		if(GUI._MenuAnimation[1] < 0.2){
-			GUI._MenuAnimation[0] -= ((GUI._MenuAnimation[0] < 0.2) ? 0.05 : 0.07) * adapt;
-		}
+		if(GUI._MenuAnimation[1] < 0.2) GUI._MenuAnimation[0] -= ((GUI._MenuAnimation[0] < 0.2) ? 0.05 : 0.07) * adapt;
 		GUI._MenuAnimation[1] -= 0.07 * adapt;
 	}
 	GUI._MenuAnimation[0] = Clamp(GUI._MenuAnimation[0], 0, 1);
@@ -1224,21 +1197,21 @@ const keys = {
 	"89": "y",
 	"90": "z",
 	"93": "select",
-	"96": "num 0",
-	"97": "num 1",
-	"98": "num 2",
-	"99": "num 3",
-	"100": "num 4",
-	"101": "num 5",
-	"102": "num 6",
-	"103": "num 7",
-	"104": "num 8",
-	"105": "num 9",
-	"106": "num *",
-	"107": "num +",
-	"109": "num -",
-	"110": "num .",
-	"111": "num /",
+	"96": "n0",
+	"97": "n1",
+	"98": "n2",
+	"99": "n3",
+	"100": "n4",
+	"101": "n5",
+	"102": "n6",
+	"103": "n7",
+	"104": "n8",
+	"105": "n9",
+	"106": "n. *",
+	"107": "n. +",
+	"109": "n. -",
+	"110": "n. .",
+	"111": "n. /",
 	"112": "f1",
 	"113": "f2",
 	"114": "f3",
@@ -1269,8 +1242,9 @@ GUI.GetAllPressedKeys = function(){
 	}
 	return pressed;
 }
-var local, isAlive;
+var local = Entity.GetLocalPlayer(), isAlive;
 var CursorPos = Input.GetCursorPosition();
+var ScreenSize = Render.GetScreenSize();
 GUI.CacheVariables = function(){
 	ScreenSize = Render.GetScreenSize();
 	CursorPos = Input.GetCursorPosition();
@@ -1380,6 +1354,12 @@ GUI.AddDropdown = function (name, elements) {
 	E.Value = 0;
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
 }
+GUI.AddMultiDropdown = function (name, elements) {
+	var E = new GUI.Element(name, "multidropdown");
+	E.Elements = elements;
+	E.Value = 0;
+	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
+}
 GUI.AddLabel = function (name) {
 	var E = new GUI.Element(name, "label");
 	return (GUI._MenuElements[E.Tab][E.Subtab][E.Id] = E);
@@ -1453,6 +1433,10 @@ GUI.SetValue = function(tab, subtab, name, value, setnotdef){
 			if (Element.Flags & GUI.NOT_SAVEABLE) return;
 			UI.SetValue(si, Id, value);
 		}
+		case "multidropdown": {
+			GUI._MenuElements[tab][subtab][Id].Value = value;
+			UI.SetValue(si, Id, value);
+		}
 	}
 }
 GUI.GetValue = function(tab, subtab, name, cache){
@@ -1507,6 +1491,9 @@ GUI.GetValue = function(tab, subtab, name, cache){
 		}
 		case "dropdown": {
 			if (Element.Flags & GUI.NOT_SAVEABLE) return GUI._MenuElements[tab][subtab][Id].Value;
+			return UI.GetValue(si, Id);
+		}
+		case "multidropdown": {
 			return UI.GetValue(si, Id);
 		}
 	}
@@ -1883,7 +1870,7 @@ GUI.AddCheckbox("Slowwalk jitter", 15).master("Custom slowwalk");
 GUI.AddSubtab("Fake Lag");
 GUI.AddCheckbox("Static legs", 47);
 GUI.AddCheckbox("Slide break mode", 59).master("Static legs").flags(GUI.SAME_LINE);
-GUI.AddSlider("Fake lag choke", 8, 15, 14).master("Static legs");
+GUI.AddSlider("Fake lag choke", 6, 15, 14).master("Static legs");
 GUI.AddCheckbox("No fake lag on revolver", 17);
 GUI.AddCheckbox("No fake lag on nades", 18);
 
@@ -1892,7 +1879,7 @@ GUI.AddCheckbox("Matchmaking FD", 19);
 
 GUI.AddSubtab("Other");
 GUI.AddCheckbox("Legbreaker", 12);
-GUI.AddSlider("Legbreaker speed", 2, 6, 4).master("Legbreaker");
+GUI.AddSlider("Legbreaker speed", 2, 10, 6).master("Legbreaker");
 
 GUI.AddTab("Visuals", "C");
 
@@ -1972,6 +1959,7 @@ GUI.AddCheckbox("Name breaker", 38);
 GUI.AddCheckbox("Vote revealer", 39);
 GUI.AddCheckbox("View enemy chat (not working in MM)", 40);
 GUI.AddCheckbox("Auto local server setup", 53);
+GUI.AddCheckbox("Auto sv_lan 1", 67);
 GUI.AddCheckbox("Clantag", 41);
 
 GUI.AddSubtab("Keybinds fixer");
@@ -2726,6 +2714,11 @@ function slowwalk(){
 	if(slowwalk_jitter) slowwalk_speed += 10;
 	var speed = (slowwalk_speed * (((getVelocity(local) >= slowwalk_speed) && slowwalk_jitter) ? -1 : 1));
 	var dir = [0, 0, 0];
+	//if(exploitsActive("all") && ChokedCommands() == 1){
+	//	UserCMD.SetMovement([-1, 0, 0]);
+	//	UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1);
+	//	return;
+	//}
 	if(Input.IsKeyPressed(0x57)) dir[0] += speed;
 	if(Input.IsKeyPressed(0x44)) dir[1] += speed;
 	if(Input.IsKeyPressed(0x41)) dir[1] -= speed
@@ -2915,11 +2908,6 @@ function staticLegs(){
 	UI.SetValue("Misc", "GENERAL", "Movement", "Accurate walk", 0);
 	var mov = [0, 0, 0];
 	var breakmode = GUI.GetValue("Anti-Aim", "Fake Lag", "Slide break mode");
-	/*var exploits = exploitsActive("all");
-	if(exploits){
-		fakelag = 2;
-		mov = [cur[0] / 7, cur[1] / 7, cur[2]];
-	}*/
 	if(breakmode) m = UserCMD.GetMovement(), mov = [-m[0] * 1.5, -m[1] * 1.5, -m[2]];
 	switch (Globals.Tickcount() % fakelag) {
 		case 0:
@@ -3921,7 +3909,7 @@ function watermark(){
 	var text = elemets.join(style ? " | " : " / ");
 	var text_size = Render.TextSizeCustom(text, font);
 	var icon = GUI.GetValue("Visuals", "GUI", "Show icon");
-	var width = text_size[0] + (icon ? 9 : -6) - (6 * +style);
+	var width = text_size[0] + (icon ? 9 : -6) - (5 * +style);
 	var height = 19;
 	var x = ScreenSize[0] - width - 4;
 	var background = [0, 0, 0, watermark_alpha * (opacity / 255)];
@@ -3936,9 +3924,10 @@ function watermark(){
 	Render.FilledRect(x + (1 * r), y + height - 1, width - (2 * r), 1, background);
 
 	icon && Render.String(x + 1, y + 1, 0, "!", color, 5);
-	var xAdd = (icon ? 5 : -10) - (6 * +style);
-	Render.StringCustom(x + xAdd + 1, y + 4, 0, text, background, font);
-	Render.StringCustom(x + xAdd, y + 2, 0, text, [255, 255, 255, watermark_alpha], font);
+	var xAdd = (icon ? 5 : -10) - (5 * +style);
+	var yAdd = +style + 2;
+	Render.StringCustom(x + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
+	Render.StringCustom(x + xAdd, y + yAdd, 0, text, [255, 255, 255, watermark_alpha], font);
 }
 
 Global.RegisterCallback("Draw", "watermark");
@@ -4438,6 +4427,12 @@ function registerBetterGlowChams(){
 	}
 }
 Global.RegisterCallback("Draw", "registerBetterGlowChams");
+
+function autoSvLan(){
+	if(!GUI.GetValue("Misc", "General", "Auto sv_lan 1")) return;
+	if(Convar.GetInt("sv_lan") === 0) Cheat.ExecuteCommand("sv_lan 1");
+}
+Global.RegisterCallback("Draw", "autoSvLan");
 
 //Clean up
 Duktape.gc();
