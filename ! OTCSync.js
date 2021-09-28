@@ -1903,6 +1903,9 @@ GUI.AddCheckbox("Trail", 29).additional("color");
 GUI.AddCheckbox("Rainbow", 66).master("Trail").flags(GUI.SAME_LINE)
 GUI.AddSlider("Length", 0, 200, 25).master("Trail");
 GUI.AddCheckbox("Party Zeus", 21);
+GUI.AddCheckbox("Rainbow Line", 68);
+GUI.AddSlider("Height", 1, 5, 91).master("Rainbow Line");
+
 
 GUI.AddSubtab("Players");
 GUI.AddCheckbox("Hit marker", 63).additional("color");
@@ -2600,6 +2603,18 @@ function partyZeus(){
 }
 
 Cheat.RegisterCallback("CreateMove", "partyZeus")
+
+function rainbowLine(){
+	if(GUI.GetValue("Visuals", "World", "Rainbow Line")){
+    var colors = GUI.Colors.HSVToRGB(Globals.Realtime() * 0.4, 1, 1);
+    var height = GUI.GetValue("Visuals", "World", "Height")
+
+    Render.GradientRect(0, 0, ScreenSize[0]/2, height, 1, [colors[2], colors[1], colors[0], 255], [colors[0], colors[1], colors[2], 255]);
+    Render.GradientRect(ScreenSize[0]/2, 0, ScreenSize[0]/2, height, 1, [colors[0], colors[1], colors[2], 255], [colors[1], colors[0], colors[2], 255]);
+    }
+}
+
+Global.RegisterCallback("Draw", "rainbowLine")
 
 var legbreaker_delay = 0;
 var fakelag_leg = false;
