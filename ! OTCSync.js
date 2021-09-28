@@ -441,10 +441,11 @@ GUI.DrawElements = function(){
 		var ElementX = GUI.X + GUI.SubtabListWidthScaled + 16;
 		if(Element.Flags & GUI.SAME_LINE){
 			ElementX = GUI.X + ((GUI.Scale(GUI.Width) + GUI.SubtabListWidthScaled) / 2);
-			ElementOffsetY -= GUI.Scale(GUI._ElementOffsets[Element.Type]); //CurrentSubtab[ElementIds[i - 1]].Type
+			ElementOffsetY -= GUI.Scale(GUI._ElementOffsets[Element.Type]);
 		}
 		var ElementY = GUI.Y + TopOffset + ElementOffsetY + Easing(0, 30, 1 - GUI._MenuAnimation[4], 1);
-		GUI.RenderElement(Element, ElementX, ElementY, ElementId);
+		var PreviousElement = CurrentSubtab[ElementIds[i - 1]] || null;
+		GUI.RenderElement(Element, ElementX, ElementY, ElementId, PreviousElement);
 		ElementOffsetY += GUI.Scale(GUI._ElementOffsets[Element.Type]);
 	}
 	GUI.DrawHotkeyMenu();
@@ -452,7 +453,7 @@ GUI.DrawElements = function(){
 	GUI.DrawColorMenu();
 	GUI.DrawDropdownSelector();
 }
-GUI.RenderElement = function(E, x, y, id){
+GUI.RenderElement = function(E, x, y, id, prev){
 	switch(E.Type){
 		case "checkbox":
 			GUI.DrawCheckbox(x, y, E.Name, id, E.State);
@@ -468,7 +469,7 @@ GUI.RenderElement = function(E, x, y, id){
 			break;
 		case "multidropdown":
 		case "dropdown":
-			GUI.DrawDropdown(x, y, E.Name, id);
+			GUI.DrawDropdown(x, y, E.Name, id, prev);
 			break;
 		case "label":
 			GUI.DrawLabel(x, y, E.Name);
@@ -951,7 +952,7 @@ GUI.DrawColorMenu = function(){
 		GUI._ColorMenuAnimation[2][Index] = Clamp(GUI._ColorMenuAnimation[2][Index], 0, 1);
 	}
 }
-GUI.DrawDropdown = function (x, y, name, id){
+GUI.DrawDropdown = function (x, y, name, id, PreviousElement){
 	var adapt = Globals.Frametime() * GUI.AnimationSpeed;
 	var ElementsWidths = [GUI.Scale(100)];
 	var Element = GUI._MenuElements[GUI.ActiveTab][GUI.ActiveSubtab][id];
@@ -970,7 +971,10 @@ GUI.DrawDropdown = function (x, y, name, id){
 	var DropdownBorderColorAnimated = GUI.Colors.Animate(GUI.Colors.Background, DropdownBorderColor, Animation, GUI._MenuAnimation[1] * 255);
 	var DropdownTextColor = GUI.Colors.Animate(GUI.Colors.Background, GUI.Colors.Text, Animation, GUI._MenuAnimation[1] * 255);
 	var DropdownY = y + GUI.Scale(32);
-	if (!(Element.Flags & GUI.SAME_LINE)) Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
+	var PreviousIsDropdown = PreviousElement ? (PreviousElement.Type === "dropdown" || PreviousElement.Type === "multidropdown") : false;
+	if (!(Element.Flags & GUI.SAME_LINE) || (Element.Flags & GUI.SAME_LINE && PreviousIsDropdown)){
+		Render.StringCustom(x, y + GUI.Scale(12), 0, name, DropdownTextColor, GUI.Fonts.Menu);
+	}
 	Render.SmoothRect(x, DropdownY, DropdownWidth, DropdownHeight, DropdownBorderColorAnimated);
 	Render.SmoothRect(x + 1, DropdownY + 1, DropdownWidth - 2, DropdownHeight - 2, DropdownColorAnimated);
 	var Val = DropdownElements[Element.Value];
@@ -1048,11 +1052,12 @@ GUI.DrawDropdownSelector = function(){
 
 	GUI._DropdownSelectingElement = false;
 
+	var ActiveColor = GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuTextActive, GUI.Colors.ActiveElement, 0.33);
 	for(Index in DropdownElements){
 		var ElementY = GUI._DropdownPos[1] + (ElementHeight * Index);
 		var IsActive = (!IsMultiDropdown) ? (Element.Value == Index) : (Element.Value & (1 << Index));
 		if (IsActive) GUI._DropdownAnimation[2][Index] += 0.08 * adapt;
-		var DropdownTextColor = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, GUI.Colors.HotkeyMenuTextActive, GUI._DropdownAnimation[2][Index]), Lerp(0, 255, DropdownTextAnimation));
+		var DropdownTextColor = GUI.Colors.GetColor(GUI.Colors.FadeColor(GUI.Colors.HotkeyMenuText, IsActive ? ActiveColor : GUI.Colors.HotkeyMenuTextActive, GUI._DropdownAnimation[2][Index]), Lerp(0, 255, DropdownTextAnimation));
 
 		Render.StringCustom(GUI._DropdownPos[0] + GUI.Scale(5), ElementY + GUI.Scale(2), 0, DropdownElements[Index], DropdownTextColor, GUI.Fonts.Menu);
 		if (UI.IsCursorInBox(GUI._DropdownPos[0] + 1, ElementY, ElementWidth, ElementHeight) && GUI._DropdownAnimation[0] === 1 && GUI._DropdownOpened){
@@ -1569,6 +1574,11 @@ GUI.IsHotkeyActive = function(tab, subtab, name){
 			return false;
 	}
 }
+GUI.GetDropdownValue = function(tab, subtab, name, elementName){
+	var Id = name + tab[0] + subtab[0];
+	var Element = GUI._MenuElements[tab][subtab][Id];
+	return !!(Element.Value & (1 << Element.Elements.indexOf(elementName)));
+}
 GUI.OverrideState = function (tab, subtab, name, state){
 	var Id = name + tab[0] + subtab[0];
 	var Element = GUI._MenuElements[tab][subtab][Id];
@@ -1833,6 +1843,7 @@ GUI.AddCheckbox("Safe points if lethal", 7);
 GUI.AddCheckbox("Safe points on AWP", 48);
 
 GUI.AddSubtab("Doubletap");
+
 //хуй вам а не беттер дт))0)00)
 //GUI.AddCheckbox("Rage", "Doubletap", "Better DT (addon only)", 51);
 GUI.AddCheckbox("Recharge speed", 9);
@@ -1900,24 +1911,20 @@ GUI.AddCheckbox("Damage marker", 23).additional("color");
 GUI.AddCheckbox("Outline", 23).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("History chams on extended backtrack", 24);
 GUI.AddCheckbox("Better glow chams", 8).additional("color");
-GUI.AddCheckbox("Hollow", 3).master("Better glow chams").flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Pulse", 46).master("Better glow chams");
-GUI.AddCheckbox("Wireframe", 30).master("Better glow chams").flags(GUI.SAME_LINE);
+GUI.AddMultiDropdown("Glow settings", ["Hollow", "Pulse", "Wireframe"]).flags(GUI.SAME_LINE).master("Better glow chams");
 GUI.AddSlider("Vibrancy", 0, 100, 80).master("Better glow chams");
 
 GUI.AddSubtab("Local");
 GUI.AddCheckbox("Agent changer", 26);
-GUI.AddDropdown("CT Agent", "'TwoTimes' McCoy|Seal Team 6 Soldier|Buckshot|Lt. Commander Ricksaw|B Squadron Officer|3rd Commando Company|Special Agent Ava|Operator|Markus Delrow|Michael Syfers".split("|")).master("Agent changer");
-GUI.AddDropdown("T Agent", "Dragomir|Rezan The Ready|Maximus|Blackwolf|The Doctor' Romanov|Enforcer|Slingshot|Soldier|The Elite Mr. Muhlik|Ground Rebel|Osiris|Prof. Shahmat".split("|")).master("Agent changer");
-
-GUI.AddSubtab("Viewmodel");
+GUI.AddDropdown("T Agent", "Dragomir|Rezan The Ready|Maximus|Blackwolf|Doctor' Romanov|Enforcer|Slingshot|Soldier|The Elite Mr. Muhlik|Ground Rebel|Osiris|Prof. Shahmat".split("|")).master("Agent changer");
+GUI.AddDropdown("CT Agent", "'TwoTimes' McCoy|Seal Team 6 Soldier|Buckshot|Lt. Comm. Ricksaw|B Squadron Officer|3rd Commando C.|Special Agent Ava|Operator|Markus Delrow|Michael Syfers".split("|")).master("Agent changer").flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Arms changer", 25);
 GUI.AddDropdown("T Arms", "Default|Nigger|Brown|Asian|Red|Tatoo|White".split("|")).master("Arms changer");
-GUI.AddDropdown("CT Arms", "Default|Nigger|Brown|Asian|Red|Tatoo|White".split("|")).master("Arms changer");
+GUI.AddDropdown("CT Arms", "Default|Nigger|Brown|Asian|Red|Tatoo|White".split("|")).master("Arms changer").flags(GUI.SAME_LINE);;
 var knife_list = "Default|Bayonet|Flip knife|Gut knife|Karambit|M9 Bayonet|Butterfly|Falchion|Navaja|Shadow daggers|Stiletto|Bowie|Huntsman|Talon|Ursus|Classic|Paracord|Survival|Nomad|Skeleton".split("|");
 GUI.AddCheckbox("Knife changer", 57);
 GUI.AddDropdown("T Knife", knife_list).master("Knife changer");
-GUI.AddDropdown("CT Knife", knife_list).master("Knife changer");
+GUI.AddDropdown("CT Knife", knife_list).master("Knife changer").flags(GUI.SAME_LINE);
 
 GUI.AddSubtab("Other");
 GUI.AddCheckbox("Better scope", 28).additional("color");
@@ -1940,14 +1947,15 @@ GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("
 GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
 
 GUI.AddSubtab("GUI");
-GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI']);
-GUI.AddCheckbox("Show icon", 65).flags(GUI.SAME_LINE);
+GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI', 'Solus UI w\\o icon']);
 GUI.AddCheckbox("Watermark", 31).additional("color");
+GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hitlogs under crosshair", 35).additional("color");
-GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']);
-GUI.AddColor("Menu accent");
+GUI.AddColor("Menu accent/scale");
+GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']).flags(GUI.SAME_LINE);
+
 
 GUI.AddTab("Misc", "D");
 
@@ -2682,9 +2690,9 @@ function safeAWP(){
 Global.RegisterCallback("CreateMove", "safeAWP");
 
 function menuAccent(){
-	var accent = GUI.GetColor("Visuals", "GUI", "Menu accent");
-	if (accent + "" == [0, 0, 0, 0] + "") GUI.SetColor("Visuals", "GUI", "Menu accent", GUI.Colors.ActiveElement);
-	accent = GUI.GetColor("Visuals", "GUI", "Menu accent");	
+	var accent = GUI.GetColor("Visuals", "GUI", "Menu accent/scale");
+	if (accent + "" == [0, 0, 0, 0] + "") GUI.SetColor("Visuals", "GUI", "Menu accent/scale", GUI.Colors.ActiveElement);
+	accent = GUI.GetColor("Visuals", "GUI", "Menu accent/scale");	
 	if(GUI.Colors.ActiveElement !== accent) GUI.Colors.ActiveElement = accent;
 }
 
@@ -3697,12 +3705,12 @@ function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
 	const opacity = color[3];
 	color[3] = alpha;
 	var background = [0, 0, 0, alpha * (opacity / 255)];
-	var colored_line_y = style ? 20 : 2;
-	var title_y = style ? 1 : 0;
-	var showicon = GUI.GetValue("Visuals", "GUI", "Show icon");
-	if(!style) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
+	var showicon = style < 2;
+	var IsSolus = style == 1 || style == 2;
+	var colored_line_y = IsSolus ? 20 : 2;
+	if(!IsSolus) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
 	Render.FilledRect(x, y + 1, info_window_width, info_window_height - 3, background);
-	if(text !== null) Render.StringCustom(x + (style ? info_window_width / 2 : (showicon ? 25 : 4)), y + 1 + title_y, (style ? 1 : 0), text, [255, 255, 255, alpha], font);
+	if(text !== null) Render.StringCustom(x + (IsSolus ? info_window_width / 2 : (showicon ? 25 : 4)), y + 1 + +IsSolus, +IsSolus, text, [255, 255, 255, alpha], font);
 	Render.FilledRect(x, y + info_window_height - colored_line_y, 180, 2, color);
 	if (icon !== null && showicon) Render.StringCustom(x + 6, y, 0, icon, color, iconfont);
 }
@@ -3842,7 +3850,7 @@ function spectatorList(){
 	var rawcolor = GUI.GetColor("Visuals", "GUI", "Spectator list");
 	var color = GUI.Colors.GetColor(rawcolor, spectator_list_alpha);
 	drawInfoWindow(spectator_list_x, spectator_list_y, "spectators", null, spectator_list_alpha, rawcolor, font, style);
-	if(GUI.GetValue("Visuals", "GUI", "Show icon")) Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", color, 6);
+	if(style < 2) Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", color, 6);
 
 	//Reset invalid players
 	if(World.GetServerString())
@@ -3881,35 +3889,59 @@ function spectatorListDrag(){
 
 Global.RegisterCallback("Draw", "spectatorListDrag");
 
+var fps_last_time = Globals.Realtime();
+var frametimes = 0, latest_fps = 0, fps_count = 0, fps_delay = 0.33;
+var watermark_elements = {
+	"Username": function(){
+		return rusToEng(Cheat.GetUsername());
+	},
+	"K/D": function(){
+		if(!World.GetServerString()) return null;
+		return "K/D: " + (Entity.GetProp(local, "CPlayerResource", "m_iKills") / Entity.GetProp(local, "CPlayerResource", "m_iDeaths")).toFixed(2);
+	},
+	"Tickrate": function(){
+		if(!World.GetServerString()) return null;
+		return Globals.Tickcount() + " ticks";
+	},
+	"Ping": function(){
+		if(!World.GetServerString()) return null;
+		return "delay: " + ((World.GetServerString() == "local server") ? 0 : Math.floor(Global.Latency() * 1000 / 1)) + "ms";
+	},
+	"FPS": function(){
+		frametimes += Globals.Frametime(), fps_count++;
+		if(Globals.Realtime() > fps_last_time + fps_delay){
+			latest_fps = Math.round(1 / (frametimes / ++fps_count));
+			fps_last_time = Globals.Realtime(), fps_count = frametimes = 0;
+		}
+		return "FPS: " + latest_fps;
+	},
+	"Time": function(){
+		var today = new Date();
+		var hours = today.getHours(), mins = today.getMinutes(), secs = today.getSeconds();
+		var time = [((hours <= 9) ? "0" + hours : hours), ((mins <= 9) ? "0" + mins : mins), ((secs <= 9) ? "0" + secs : secs)];
+		return time.join(":");
+	}
+};
 var watermark_alpha = 0;
 function watermark(){
 	if(!GUI.GetValue("Visuals", "GUI", "Watermark")) return;
-	//if(must_display_username == null) must_display_username = mustDisplayString(rusToEng(Cheat.GetUsername()), Render.AddFont("Segoe UI Semilight", 9, 200), 9);
 	var visible = World.GetServerString() || UI.IsMenuOpen();
 	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
-	watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255);
-	if (watermark_alpha == 0) return;
+	if ((watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255)) == 0) return;
 	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
+	var IsSolus = style == 1 || style == 2;
 	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	var y = 4;
 	var rawcolor = GUI.GetColor("Visuals", "GUI", "Watermark");
 	var opacity = rawcolor[3];
 	var color = GUI.Colors.GetColor(rawcolor, watermark_alpha);
-	var elemets = ["     " + GUI.LogoText.toLowerCase()];
-	elemets.push(rusToEng(Cheat.GetUsername()));
-	if(World.GetServerString()) elemets.push("delay: " + ((World.GetServerString() == "local server") ? 0 : Math.floor(Global.Latency() * 1000 / 1)) + "ms");
-	var today = new Date();
-    var hours1 = today.getHours();
-    var minutes1 = today.getMinutes();
-	var seconds1 = today.getSeconds();
-    var hours = hours1 <= 9 ? "0" + hours1 + ":" : hours1 + ":";
-    var minutes = minutes1 <= 9 ? "0" + minutes1 + ":" : minutes1 + ":";
-	var seconds = seconds1 <= 9 ? "0" + seconds1 : seconds1;
-	elemets.push(hours + minutes + seconds);
-	var text = elemets.join(style ? " | " : " / ");
+	var elements = ["     " + GUI.LogoText.toLowerCase()];
+	for(element in watermark_elements)
+		if(GUI.GetDropdownValue("Visuals", "GUI", "Watermark elements", element) && (value = watermark_elements[element]()) !== null) elements.push(value);
+	var text = elements.join(style ? " | " : " / ");
 	var text_size = Render.TextSizeCustom(text, font);
-	var icon = GUI.GetValue("Visuals", "GUI", "Show icon");
-	var width = text_size[0] + (icon ? 9 : -6) - (5 * +style);
+	var icon = style < 2;
+	var width = text_size[0] + (icon ? 9 : -6) - (5 * +IsSolus);
 	var height = 19;
 	var x = ScreenSize[0] - width - 4;
 	var background = [0, 0, 0, watermark_alpha * (opacity / 255)];
@@ -3924,8 +3956,8 @@ function watermark(){
 	Render.FilledRect(x + (1 * r), y + height - 1, width - (2 * r), 1, background);
 
 	icon && Render.String(x + 1, y + 1, 0, "!", color, 5);
-	var xAdd = (icon ? 5 : -10) - (5 * +style);
-	var yAdd = +style + 2;
+	var xAdd = (icon ? 5 : -10) - (5 * +IsSolus);
+	var yAdd = +IsSolus + 2;
 	Render.StringCustom(x + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
 	Render.StringCustom(x + xAdd, y + yAdd, 0, text, [255, 255, 255, watermark_alpha], font);
 }
@@ -4167,10 +4199,10 @@ function legPredictionDraw(){
 Global.RegisterCallback("Draw", "legPredictionDraw");
 
 function knifeChanger(){
-	if (!GUI.GetValue("Visuals", "Viewmodel", "Knife changer") || !isAlive) return;
+	if (!GUI.GetValue("Visuals", "Local", "Knife changer") || !isAlive) return;
 	var team = Entity.GetProp(local, "DT_BaseEntity", "m_iTeamNum")
-	if (team == 2) UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "T Knife"));
-	else if (team == 3) UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Viewmodel", "CT Knife"));
+	if (team == 2) UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Local", "T Knife"));
+	else if (team == 3) UI.SetValue("Misc", "SKINS", "Knife", "Knife model", GUI.GetValue("Visuals", "Local", "CT Knife"));
 }
 Global.RegisterCallback("Draw", "knifeChanger");
 
@@ -4220,7 +4252,7 @@ Cheat.RegisterCallback("CreateMove", "noDesync");
 function guiScale(){
 	var scale = GUI.GetValue("Visuals", "GUI", "GUI Scale");
 	scale = (scale === 0) ? 1 : (scale === 1) ? 0 : scale;
-	GUI._Scale = 0.85 + (scale * 0.15);
+	GUI._Scale = Math.min(0.8 + (scale * 0.2), 1.35);
 }
 
 Cheat.RegisterCallback("Draw", "guiScale");
@@ -4394,18 +4426,18 @@ function betterGlowChams(){
     var index = Material.Get("Better glow");
     if (index > 0){
         Material.SetKeyValue(index, "$baseTexture", "vgui/white");
-        Material.SetKeyValue(index, "$additive", GUI.GetValue("Visuals", "Players", "Hollow") ? "1" : "0")
+        Material.SetKeyValue(index, "$additive", GUI.GetDropdownValue("Visuals", "Players", "Glow settings", "Hollow") ? "1" : "0")
         Material.SetKeyValue(index, "$envmap", "models/effects/cube_white")
         Material.SetKeyValue(index, "$envmapfresnel", "1")
         
 		var color = GUI.GetColor("Visuals", "Players", "Better glow chams");
-        if(GUI.GetValue("Visuals", "Players", "Pulse")){
+        if(GUI.GetDropdownValue("Visuals", "Players", "Glow settings", "Pulse")){
             var sine = (Math.sin(Globals.Realtime() * 7) + 5) * 0.6;
             color[0] *= sine
             color[1] *= sine
             color[2] *= sine
         }
-        Material.SetKeyValue(index, "$wireframe", GUI.GetValue("Visuals", "Players", "Wireframe") ? "1" : "0");
+        Material.SetKeyValue(index, "$wireframe", GUI.GetDropdownValue("Visuals", "Players", "Glow settings", "Wireframe") ? "1" : "0");
         var vibrancy = GUI.GetValue("Visuals", "Players", "Vibrancy") / 10;
         Material.SetKeyValue(index, "$envmapfresnelminmaxexp",  "[0 " + (11 - vibrancy) + " " + ((11 - vibrancy) * 2) + "]");
         Material.SetKeyValue(index, "$envmaptint", "[" + color[0] / 255 + " " + color[1] / 255 + " " + color[2] / 255 + "]");
