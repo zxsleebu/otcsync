@@ -3916,7 +3916,7 @@ var watermark_elements = {
 	},
 	"Tickrate": function(){
 		if(!World.GetServerString()) return null;
-		return Globals.Tickcount() + " ticks";
+		return Globals.Tickrate() + " ticks";
 	},
 	"Ping": function(){
 		if(!World.GetServerString()) return null;
@@ -3945,8 +3945,8 @@ function watermark(){
 	if ((watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255)) == 0) return;
 	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var IsSolus = style == 1 || style == 2;
-	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
-	var y = 4;
+	var font = IsSolus ? Render.AddFont("Verdana", 7, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	var y = 8;
 	var rawcolor = GUI.GetColor("Visuals", "GUI", "Watermark");
 	var opacity = rawcolor[3];
 	var color = GUI.Colors.GetColor(rawcolor, watermark_alpha);
@@ -3961,20 +3961,21 @@ function watermark(){
 	var x = ScreenSize[0] - width - 4;
 	var background = [0, 0, 0, watermark_alpha * (opacity / 255)];
 	var r = +!style;
+	var addw = IsSolus ? 2 : 0 
 
 	//Top line
-	Render.FilledRect(x + (1 * r), y, width - (2 * r), 1, color);
-	Render.FilledRect(x, y + 1, width, 1, color);
+	Render.FilledRect(x - 9 + (1 * r), y, width + addw - (2 * r), 1, color);
+	Render.FilledRect(x - 9, y + 1, width + addw, 1, color);
 
 	//Background
-	Render.FilledRect(x, y + 2, width, height - 3, background);
-	Render.FilledRect(x + (1 * r), y + height - 1, width - (2 * r), 1, background);
+	Render.FilledRect(x - 9, y + 2, width + addw, height - 3, background);
+	Render.FilledRect(x - 9 + (1 * r), y + height - 1, width + addw - (2 * r), 1, background);
 
-	icon && Render.String(x + 1, y + 1, 0, "!", color, 5);
-	var xAdd = (icon ? 5 : -10) - (5 * +IsSolus);
+	icon && Render.String(x, y + 1, 0, "!", color, 5);
+	var xAdd = (icon ? IsSolus ? 8 : 5 : -6) - (6 * +IsSolus);
 	var yAdd = +IsSolus + 2;
-	Render.StringCustom(x + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
-	Render.StringCustom(x + xAdd, y + yAdd, 0, text, [255, 255, 255, watermark_alpha], font);
+	Render.StringCustom(x - 9 + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
+	Render.StringCustom(x - 9 + xAdd, y + yAdd, 0, text, [255, 255, 255, watermark_alpha], font);
 }
 
 Global.RegisterCallback("Draw", "watermark");
