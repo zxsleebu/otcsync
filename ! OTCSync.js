@@ -981,8 +981,7 @@ GUI.DrawDropdown = function (x, y, name, id, PreviousElement){
 	if(IsMultiDropdown){
 		var elements = DropdownElements.filter(function(e, i){return Element.Value & (1 << i)});
 		var OriginalVal = elements.join(", ");
-		var Times = GUI.Scale(6);
-		Val = OriginalVal.slice(0, Math.floor(DropdownWidth / Times - Times));
+		Val = OriginalVal.slice(0, Math.floor((DropdownWidth / GUI.Scale(6.33)) - 5));
 		if (OriginalVal !== Val) Val += "...";
 		Val = Val || "None";
 	}
@@ -1732,8 +1731,8 @@ GUI.Colors.GetContrastColor = function(bgColor, lightColor, darkColor){
   return (((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186) ?
 	darkColor : lightColor;
 }
-GUI.Colors.HSVToRGB = function(h, s, v){
-	var r, g, b, i, f, p, q, t, a;
+GUI.Colors.HSVToRGB = function(h, s, v, a){
+	var r, g, b, i, f, p, q, t, a = a || 255;
 	if (arguments.length === 1) {
 		s = h[1], v = h[2], a = h[3], h = h[0]
 	}
@@ -1904,7 +1903,7 @@ GUI.AddCheckbox("Rainbow", 66).master("Trail").flags(GUI.SAME_LINE)
 GUI.AddSlider("Length", 0, 200, 25).master("Trail");
 GUI.AddCheckbox("Party Zeus", 21);
 GUI.AddCheckbox("Rainbow Line", 68);
-GUI.AddSlider("Height", 1, 5, 91).master("Rainbow Line");
+GUI.AddSlider("Height", 1, 5, 2).master("Rainbow Line");
 
 
 GUI.AddSubtab("Players");
@@ -1941,18 +1940,19 @@ GUI.AddSlider("Thirdperson distance", 50, 150, 0).master("Better 3rd person");
 GUI.AddSlider("Aspect ratio", 0, 250, 0);
 
 GUI.AddSubtab("Indicators");
-GUI.AddCheckbox("Indicators", 32).additional("submenu");
+GUI.AddCheckbox("Indicators", 32);
+GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Acidtech v2', 'Killaura', 'IDEAL YAW']).flags(GUI.SAME_LINE).master("Indicators");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
-GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Acidtech v2', 'Killaura', 'IDEAL YAW']).master("Indicators");
 GUI.AddCheckbox("Desync line", 67).master("Indicators")
 GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
 GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
 
 GUI.AddSubtab("GUI");
 GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI', 'Solus UI w\\o icon']);
+GUI.AddDropdown("Windows color type", ["Solid", "Fade left and right", "Fade to left", "Fade to right", "Sket" /* не изменять!! */, "Sket 2", "Rainbow", "More rainbow", "No line"]).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Watermark", 31).additional("color");
-GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE);
+GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE).master("Watermark");
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hitlogs under crosshair", 35).additional("color");
@@ -2605,13 +2605,11 @@ function partyZeus(){
 Cheat.RegisterCallback("CreateMove", "partyZeus")
 
 function rainbowLine(){
-	if(GUI.GetValue("Visuals", "World", "Rainbow Line")){
-    var colors = GUI.Colors.HSVToRGB(Globals.Realtime() * 0.4, 1, 1);
-    var height = GUI.GetValue("Visuals", "World", "Height")
-
-    Render.GradientRect(0, 0, ScreenSize[0]/2, height, 1, [colors[2], colors[1], colors[0], 255], [colors[0], colors[1], colors[2], 255]);
-    Render.GradientRect(ScreenSize[0]/2, 0, ScreenSize[0]/2, height, 1, [colors[0], colors[1], colors[2], 255], [colors[1], colors[0], colors[2], 255]);
-    }
+	if(!GUI.GetValue("Visuals", "World", "Rainbow Line")) return;
+	var c = GUI.Colors.HSVToRGB(Globals.Realtime() * 0.4, 1, 1);
+	var height = GUI.GetValue("Visuals", "World", "Height");
+	Render.GradientRect(0, 0, ScreenSize[0] / 2, height, 1, [c[2], c[1], c[0], 255], [c[0], c[1], c[2], 255]);
+	Render.GradientRect(ScreenSize[0] / 2, 0, ScreenSize[0]/2, height, 1, [c[0], c[1], c[2], 255], [c[1], c[0], c[2], 255]);
 }
 
 Global.RegisterCallback("Draw", "rainbowLine")
@@ -3712,6 +3710,37 @@ function keybindFixer() {
 
 Global.RegisterCallback("Draw", "keybindFixer");
 
+function drawColorLine(x, y, w, h, color, style, gStyle, isWatermark){
+	isWatermark = isWatermark || false;
+	var transparentColor = [color[0], color[1], color[2], isWatermark ? 75 : 0];
+	isWatermark = (isWatermark && style == 0);
+	var hw = w / 2;
+	var gr = function(x, y, w, h, c1, c2){
+		c2 = c2 || c1;
+		Render.GradientRect(x, y + +isWatermark, w, isWatermark ? 1 : h, 1, c1, c2)
+		if(isWatermark) Render.GradientRect(x + 1, y, w - 2, 1, 1, c1, c2)
+	};
+	if(gStyle == 6 || gStyle == 7) var rgb = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1, color[3]);
+	if (gStyle == 0) gr(x, y, w, h, color);
+	else if (gStyle == 1){
+		gr(x, y, hw, h, transparentColor, color);
+		gr(x + hw, y, hw, h, color, transparentColor);
+	}
+	else if(gStyle == 2 || gStyle == 3 || gStyle == 6){
+		var color1 = transparentColor, color2 = color;
+		if(gStyle == 3) color1 = color, color2 = transparentColor;
+		if(gStyle == 6) color1 = rgb, color2 = [rgb[2], rgb[0], rgb[1], color[3]];
+		gr(x, y, w, h, color1, color2);
+	}
+	else if(gStyle == 4 || gStyle == 5 || gStyle == 7){
+		var color1 = [59, 175, 222, 255], color2 = [202, 70, 205, 255], color3 = [201, 227, 58, 255];
+		if(gStyle == 5) color1 = [70, 252, 255, 255], color2 = [255, 52, 255, 255], color3 = [254, 252, 0, 255];
+		else if(gStyle == 7) color1 = rgb, color2 = [rgb[1], rgb[2], rgb[0], color[3]], color3 = [rgb[2], rgb[0], rgb[1], color[3]];
+		gr(x, y, hw, h, color1, color2);
+		gr(x + hw, y, hw, h, color2, color3);
+	}
+}
+
 var info_window_width = 180;
 var info_window_height = 19;
 function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
@@ -3722,12 +3751,17 @@ function drawInfoWindow(x, y, text, icon, alpha, color, font, style){
 	var background = [0, 0, 0, alpha * (opacity / 255)];
 	var showicon = style < 2;
 	var IsSolus = style == 1 || style == 2;
-	var colored_line_y = IsSolus ? 20 : 2;
+	var colored_line_y = IsSolus ? info_window_height + 1 : 2;
+	var gradientStyle = GUI.GetValue("Visuals", "GUI", "Windows color type");
 	if(!IsSolus) Render.FilledRect(x + 1, y, info_window_width - 2, 1, background);
 	Render.FilledRect(x, y + 1, info_window_width, info_window_height - 3, background);
 	if(text !== null) Render.StringCustom(x + (IsSolus ? info_window_width / 2 : (showicon ? 25 : 4)), y + 1 + +IsSolus, +IsSolus, text, [255, 255, 255, alpha], font);
-	Render.FilledRect(x, y + info_window_height - colored_line_y, 180, 2, color);
-	if (icon !== null && showicon) Render.StringCustom(x + 6, y, 0, icon, color, iconfont);
+	drawColorLine(x, y + info_window_height - colored_line_y, info_window_width, 2, color, style, gradientStyle);
+	//Render.FilledRect(x, y + info_window_height - colored_line_y, 180, 2, color);
+	var isRGB = (gradientStyle == 6 || gradientStyle == 7);
+	var iconColor = color;
+	if (isRGB) iconColor = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1, color[3]);
+	if (icon !== null && showicon) Render.StringCustom(x + 6, y, 0, icon, iconColor, iconfont);
 }
 
 var keybind_list_alpha = 0;
@@ -3796,7 +3830,7 @@ Global.RegisterCallback("Draw", "keybindList");
 
 function keybindListDrag(){
 	if(!UI.IsMenuOpen()) return;
-	if (GUI._MenuIsMoving) return;
+	if (GUI._MenuIsMoving || spectator_list_is_moving) return;
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
 	var cursor_pos = Input.GetCursorPosition();
 	keybind_list_x = Clamp(keybind_list_x, 1, ScreenSize[0] - info_window_width);
@@ -3865,7 +3899,10 @@ function spectatorList(){
 	var rawcolor = GUI.GetColor("Visuals", "GUI", "Spectator list");
 	var color = GUI.Colors.GetColor(rawcolor, spectator_list_alpha);
 	drawInfoWindow(spectator_list_x, spectator_list_y, "spectators", null, spectator_list_alpha, rawcolor, font, style);
-	if(style < 2) Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", color, 6);
+	var iconColor = color;
+	var gradientStyle = GUI.GetValue("Visuals", "GUI", "Windows color type");
+	if (gradientStyle == 6 || gradientStyle == 7) iconColor = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1, color[3]);
+	if(style < 2) Render.String(spectator_list_x + 2, spectator_list_y + (style ? 3 : 2), 0, "%", iconColor, 6);
 
 	//Reset invalid players
 	if(World.GetServerString())
@@ -3882,7 +3919,7 @@ Global.RegisterCallback("Draw", "spectatorList");
 
 function spectatorListDrag(){
 	if(!UI.IsMenuOpen()) return;
-	if (GUI._MenuIsMoving) return;
+	if (GUI._MenuIsMoving || keybind_list_is_moving) return;
 	if(!GUI.GetValue("Visuals", "GUI", "Spectator list")) return;
 	var cursor_pos = Input.GetCursorPosition();
 	spectator_list_x = Clamp(spectator_list_x, 1, ScreenSize[0] - info_window_width);
@@ -3937,19 +3974,14 @@ var watermark_elements = {
 		return time.join(":");
 	}
 };
-var watermark_alpha = 0;
 function watermark(){
 	if(!GUI.GetValue("Visuals", "GUI", "Watermark")) return;
-	var visible = World.GetServerString() || UI.IsMenuOpen();
-	var speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
-	if ((watermark_alpha = Clamp(watermark_alpha += speed * (visible && 1 || -1), 0, 255)) == 0) return;
 	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var IsSolus = style == 1 || style == 2;
-	var font = IsSolus ? Render.AddFont("Verdana", 7, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
-	var y = 8;
-	var rawcolor = GUI.GetColor("Visuals", "GUI", "Watermark");
-	var opacity = rawcolor[3];
-	var color = GUI.Colors.GetColor(rawcolor, watermark_alpha);
+	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	var y = 4;
+	var color = GUI.GetColor("Visuals", "GUI", "Watermark");
+	var opacity = color[3];
 	var elements = ["     " + GUI.LogoText.toLowerCase()];
 	for(element in watermark_elements)
 		if(GUI.GetDropdownValue("Visuals", "GUI", "Watermark elements", element) && (value = watermark_elements[element]()) !== null) elements.push(value);
@@ -3959,23 +3991,24 @@ function watermark(){
 	var width = text_size[0] + (icon ? 9 : -6) - (5 * +IsSolus);
 	var height = 19;
 	var x = ScreenSize[0] - width - 4;
-	var background = [0, 0, 0, watermark_alpha * (opacity / 255)];
-	var r = +!style;
-	var addw = IsSolus ? 2 : 0 
+	var background = [0, 0, 0, opacity];
+	var r = style == 0;
 
 	//Top line
-	Render.FilledRect(x - 9 + (1 * r), y, width + addw - (2 * r), 1, color);
-	Render.FilledRect(x - 9, y + 1, width + addw, 1, color);
+	drawColorLine(x, y, width, 2, GUI.Colors.GetColor(color, 255), style, GUI.GetValue("Visuals", "GUI", "Windows color type"), true);
 
 	//Background
-	Render.FilledRect(x - 9, y + 2, width + addw, height - 3, background);
-	Render.FilledRect(x - 9 + (1 * r), y + height - 1, width + addw - (2 * r), 1, background);
+	Render.FilledRect(x, y + 2, width, height - 2, background);
+	Render.FilledRect(x + (1 * r), y + height, width - (2 * r), 1, background);
 
-	icon && Render.String(x, y + 1, 0, "!", color, 5);
-	var xAdd = (icon ? IsSolus ? 8 : 5 : -6) - (6 * +IsSolus);
-	var yAdd = +IsSolus + 2;
-	Render.StringCustom(x - 9 + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
-	Render.StringCustom(x - 9 + xAdd, y + yAdd, 0, text, [255, 255, 255, watermark_alpha], font);
+	var iconColor = color;
+	var gradientStyle = GUI.GetValue("Visuals", "GUI", "Windows color type");
+	if (gradientStyle == 6 || gradientStyle == 7) iconColor = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1);
+	icon && Render.String(x + 1, y + 2, 0, "!", iconColor, 5);
+	var xAdd = (icon ? 5 : -10) - (5 * +IsSolus);
+	var yAdd = +IsSolus + 3;
+	Render.StringCustom(x + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
+	Render.StringCustom(x + xAdd, y + yAdd, 0, text, [255, 255, 255, 255], font);
 }
 
 Global.RegisterCallback("Draw", "watermark");
