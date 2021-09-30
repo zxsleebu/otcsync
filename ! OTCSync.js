@@ -55,7 +55,7 @@ var GUI = Duktape.compact({
 	_DropdownPos: [0, 0],
 	_DropdownWidth: 100,
 	_DropdownSelectingElement: false,
-	_ElementOffsets: {"checkbox": 30, "slider": 40, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30, "multidropdown": 50},
+	_ElementOffsets: {"checkbox": 30, "slider": 38, "hotkey": 30, "color": 30, "dropdown": 50, "label": 30, "multidropdown": 50},
 	_SubmenuTriggerAnimations: {},
 	_SubmenuAnimations: [0, 0],
 	_LoadedCount: 0,
@@ -1793,7 +1793,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 69
+//Index you can use is 71
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1944,7 +1944,7 @@ GUI.AddCheckbox("Indicators", 32);
 GUI.AddDropdown("Indicators type", ['Default', 'Acidtech', 'Acidtech v2', 'Killaura', 'IDEAL YAW']).flags(GUI.SAME_LINE).master("Indicators");
 GUI.AddCheckbox("Indicators centered", 45).master("Indicators")//.flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Inverter check", 50).master("Indicators").flags(GUI.SAME_LINE)
-GUI.AddCheckbox("Desync line", 67).master("Indicators")
+GUI.AddCheckbox("Desync line", 69).master("Indicators")
 GUI.AddCheckbox("Indicators custom color", 16).master("Indicators").additional("color");
 GUI.AddSlider("Indicators Y offset", 0, 75, 0).master("Indicators")
 
@@ -1954,7 +1954,7 @@ GUI.AddDropdown("Windows color type", ["Solid", "Fade left and right", "Fade to 
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE).master("Watermark");
 GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Info", 69).additional("color")
+GUI.AddCheckbox("Info", 70).additional("color")
 GUI.AddMultiDropdown("Info elements", ["FAKE", "FL", "IO", "MS/HZ"]).flags(GUI.SAME_LINE).master("Info")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
@@ -2963,7 +2963,7 @@ function aaPresets() {
 		AntiAim.SetLBYOffset(0);
 	}
 	if (preset === 2) {
-		var desync = (Globals.Tickcount() % 48) * (isInverted() && 1 || -1);
+		var desync = (Globals.Tickcount() % 48) * (!isInverted() && 1 || -1);
 		var yaw = Math.floor(desync / 2)
 		AntiAim.SetRealOffset(-desync);
 		AntiAim.SetFakeOffset(yaw);
@@ -3952,7 +3952,11 @@ var watermark_elements = {
 	},
 	"K/D": function(){
 		if(!World.GetServerString()) return null;
-		return "K/D: " + (Entity.GetProp(local, "CPlayerResource", "m_iKills") / Entity.GetProp(local, "CPlayerResource", "m_iDeaths")).toFixed(2);
+		var kills = Entity.GetProp(local, "CPlayerResource", "m_iKills");
+		var deaths = Entity.GetProp(local, "CPlayerResource", "m_iDeaths");
+		var assists = Entity.GetProp(local, "CPlayerResource", "m_iAssists");
+		if(deaths === 0) deaths = 1;
+		return "K/D: " + ((kills + assists) / deaths).toFixed(2);
 	},
 	"Tickrate": function(){
 		if(!World.GetServerString()) return null;
