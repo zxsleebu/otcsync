@@ -1793,7 +1793,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Last index is 68
+//Last index is 69
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1953,6 +1953,9 @@ GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI', 'Solus UI w\\o icon'])
 GUI.AddDropdown("Windows color type", ["Solid", "Fade left and right", "Fade to left", "Fade to right", "Sket" /* не изменять!! */, "Sket 2", "Rainbow", "More rainbow", "No line"]).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Watermark", 31).additional("color");
 GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE).master("Watermark");
+GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE);
+GUI.AddCheckbox("Info", 69).additional("color")
+GUI.AddMultiDropdown("Info elements", ["FAKE", "FL", "IO", "MS/HZ"]).flags(GUI.SAME_LINE).master("Info")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hitlogs under crosshair", 35).additional("color");
@@ -3979,6 +3982,7 @@ function watermark(){
 	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var IsSolus = style == 1 || style == 2;
 	var font = style ? Render.AddFont("Verdana", 7, 500) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	var font = IsSolus ? Render.AddFont("Verdana", 7, 500) : Render.AddFont("Segoe UI Semilight", 9, 200);
 	var y = 8;
 	var color = GUI.GetColor("Visuals", "GUI", "Watermark");
 	var opacity = color[3];
@@ -4005,7 +4009,7 @@ function watermark(){
 	var iconColor = color;
 	var gradientStyle = GUI.GetValue("Visuals", "GUI", "Windows color type");
 	if (gradientStyle == 6 || gradientStyle == 7) iconColor = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1);
-	icon && Render.String(x, y + 2, 0, "!", iconColor, 5);
+	icon && Render.String(x - 9, y + 2, 0, "!", iconColor, 5);
 	var xAdd = (icon ? IsSolus ? 8 : 5 : -6) - (6 * +IsSolus);
 	var yAdd = +IsSolus + 3;
 	Render.StringCustom(x - 9 + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
@@ -4013,6 +4017,35 @@ function watermark(){
 }
 
 Global.RegisterCallback("Draw", "watermark");
+
+function Infoelements(){
+if(!GUI.GetValue("Visuals", "GUI", "Info")) return;
+var watermark = GUI.GetValue("Visuals", "GUI", "Watermark")
+var font = Render.AddFont("Verdana", 7, 400)
+var rawcolor = GUI.GetColor("Visuals", "GUI", "Info")
+var col = [rawcolor[0],rawcolor[1],rawcolor[2], 255]
+var x = ScreenSize
+var y = 10
+var addlow = watermark ? 25 : 0
+var textfl = UI.IsHotkeyActive("Rage", "Doubletap") && Exploit.GetCharge() ? "1 | SHIFTING" : UI.IsHotkeyActive("Rage", "Hide shots") ? "1 | ONSHOT" : UI.GetValue("Anti-Aim", "Limit")
+var flsize = Render.TextSizeCustom("FL: " + textfl, font);
+var gr1 = [255 - getAntiaimDelta() * 4, getAntiaimDelta() * 4, 0, 100]
+var gr2 = [255 - getAntiaimDelta()  * 4, getAntiaimDelta() * 4, 0, 255]
+	if(World.GetServerString()){
+	Render.FilledRect(x[0] - flsize[0] - 18, y + addlow, flsize[0] + 7, 17, [10, 10, 10, rawcolor[3]])
+	Render.GradientRect(x[0] - flsize[0] - 18, y + addlow + 17, flsize[0] / 2 + 5, 1, 1, [0, 0, 0, 50], col)
+	Render.GradientRect(x[0] - flsize[0] / 2 - 13, y + addlow + 17, flsize[0] / 2, 1, 1, col, [0, 0, 0, 50])
+	Render.StringCustom(x[0] - flsize[0] - 16, y + addlow + 4, 0, "FL: " + textfl, [0, 0, 0, 255], font)
+	Render.StringCustom(x[0] - flsize[0] - 15, y + addlow + 2, 0, "FL: " + textfl, [255, 255, 255, 255], font)
+
+	Render.GradientRect(x[0] - flsize[0] - 95, y + addlow, 37, 17, 1, [0, 0, 0, rawcolor[3] / 3], [0, 0, 0, rawcolor[3]])
+	Render.GradientRect(x[0] - flsize[0] - 58, y + addlow, 37, 17, 1, [0, 0, 0, rawcolor[3]], [0, 0, 0, rawcolor[3] / 3])
+	Render.StringCustom(x[0] - flsize[0] - 84, y + addlow + 2, 0, "FAKE (" + getAntiaimDelta() + ")", [255, 255, 255, 255], font)
+	Render.GradientRect(x[0] - flsize[0] - 97, y + addlow, 2, 8, 0, gr1, gr2)
+	Render.GradientRect(x[0] - flsize[0] - 97, y + addlow + 8, 2, 8, 0, gr2, gr1) }
+}
+
+Global.RegisterCallback("Draw", "Infoelements");
 
 var should_switch = false;
 function AWPswitch(){
