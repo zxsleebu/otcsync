@@ -3978,8 +3978,8 @@ function watermark(){
 	if(!GUI.GetValue("Visuals", "GUI", "Watermark")) return;
 	var style = GUI.GetValue("Visuals", "GUI", "Windows style");
 	var IsSolus = style == 1 || style == 2;
-	var font = style ? Render.AddFont("Verdana", 8, 400) : Render.AddFont("Segoe UI Semilight", 9, 200);
-	var y = 4;
+	var font = style ? Render.AddFont("Verdana", 7, 500) : Render.AddFont("Segoe UI Semilight", 9, 200);
+	var y = 8;
 	var color = GUI.GetColor("Visuals", "GUI", "Watermark");
 	var opacity = color[3];
 	var elements = ["     " + GUI.LogoText.toLowerCase()];
@@ -3993,22 +3993,23 @@ function watermark(){
 	var x = ScreenSize[0] - width - 4;
 	var background = [0, 0, 0, opacity];
 	var r = style == 0;
+	var addw = IsSolus ? 2 : 0
 
 	//Top line
-	drawColorLine(x, y, width, 2, GUI.Colors.GetColor(color, 255), style, GUI.GetValue("Visuals", "GUI", "Windows color type"), true);
+	drawColorLine(x - 9, y, width + addw, 2, GUI.Colors.GetColor(color, 255), style, GUI.GetValue("Visuals", "GUI", "Windows color type"), true);
 
 	//Background
-	Render.FilledRect(x, y + 2, width, height - 2, background);
-	Render.FilledRect(x + (1 * r), y + height, width - (2 * r), 1, background);
+	Render.FilledRect(x - 9, y + 2, width + addw, height - 2, background);
+	Render.FilledRect(x - 9 + (1 * r), y + height, width + addw - (2 * r), 1, background);
 
 	var iconColor = color;
 	var gradientStyle = GUI.GetValue("Visuals", "GUI", "Windows color type");
 	if (gradientStyle == 6 || gradientStyle == 7) iconColor = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1);
-	icon && Render.String(x + 1, y + 2, 0, "!", iconColor, 5);
-	var xAdd = (icon ? 5 : -10) - (5 * +IsSolus);
+	icon && Render.String(x, y + 2, 0, "!", iconColor, 5);
+	var xAdd = (icon ? IsSolus ? 8 : 5 : -6) - (6 * +IsSolus);
 	var yAdd = +IsSolus + 3;
-	Render.StringCustom(x + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
-	Render.StringCustom(x + xAdd, y + yAdd, 0, text, [255, 255, 255, 255], font);
+	Render.StringCustom(x - 9 + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
+	Render.StringCustom(x - 9 + xAdd, y + yAdd, 0, text, [255, 255, 255, 255], font);
 }
 
 Global.RegisterCallback("Draw", "watermark");
