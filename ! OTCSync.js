@@ -1868,9 +1868,9 @@ GUI.AddCheckbox("Auto invert", 49);
 GUI.AddCheckbox("No desync on DT", 62);
 
 GUI.AddSubtab("AA Presets");
-GUI.AddDropdown("Preset", ["None", "Desync Jitter", "Desync Sway", "LavaWalk"]);
+GUI.AddDropdown("Preset", ["None", "Desync jitter", "Desync move", "Maximize delta"]);
 GUI.AddCheckbox("Adaptive jitter", 58);
-GUI.AddSlider("Strength", 1, 10, 5).master("Adaptive jitter");
+GUI.AddSlider("Strength", 1, 8, 6).master("Adaptive jitter");
 
 GUI.AddSubtab("Slowwalk");
 GUI.AddCheckbox("Custom slowwalk", 14);
@@ -2618,23 +2618,10 @@ var legbreaker_delay = 0;
 var fakelag_leg = false;
 function legbreaker(){
 	if(!isAlive || (GUI.GetValue("Anti-Aim", "Fake Lag", "Static legs") && !exploitsActive("all"))) return;
-	var legbreaker = GUI.GetValue("Anti-Aim", "Other", "Legbreaker");
-	if(!legbreaker) return;
-	var legmovement = UI.GetValue("Misc", "GENERAL", "Movement", "Slide walk");
+	if(!GUI.GetValue("Anti-Aim", "Other", "Legbreaker")) return;
 	if (UI.GetValue("Misc", "GENERAL", "Movement", "Accurate walk")) UI.SetValue("Misc", "GENERAL", "Movement", "Accurate walk", 0);
-	//UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", ChokedCommands() == 0);
 	if(legbreaker_delay++ > GUI.GetValue("Anti-Aim", "Other", "Legbreaker speed")){
-		if(legmovement === 0){
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1);
-			UI.SetValue("Anti-Aim", "Extra", "Jitter move", 0);
-		}
-		else if(legmovement === 1){
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 0);
-			UI.SetValue("Anti-Aim", "Extra", "Jitter move", 1);
-		}
-		else{
-			UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", 1);
-		}
+		UI.SetValue("Misc", "GENERAL", "Movement", "Slide walk", (UI.GetValue("Misc", "GENERAL", "Movement", "Slide walk") === 0));
 		legbreaker_delay = 0;
 	}
 }
@@ -2945,11 +2932,11 @@ function staticLegs(){
 Global.RegisterCallback("CreateMove", "staticLegs");
 
 var preset3_yaw = -18;
-var preset3_dsy = -30;
 function aaPresets() {
 	var preset = GUI.GetValue("Anti-Aim", "AA Presets", "Preset");
 	if (!preset || lowdelta_active || legit_aa_active || (GUI.GetValue("Anti-Aim", "General", "No desync on DT") && exploitsActive("dt"))) return;
 	AntiAim.SetOverride(1);
+	var inv = isInverted() && 1 || -1;
 	if(preset === 1){
 		AntiAim.SetOverride(1);
 		var state = Globals.Tickcount() % 3;
@@ -2960,22 +2947,21 @@ function aaPresets() {
 		AntiAim.SetLBYOffset(0);
 	}
 	if (preset === 2) {
-		var desync = (Globals.Tickcount() % 48) * (!isInverted() && 1 || -1);
+		var desync = (Globals.Tickcount() % 48) * inv;
 		var yaw = Math.floor(desync / 2)
-		AntiAim.SetRealOffset(-desync);
-		AntiAim.SetFakeOffset(yaw);
+		AntiAim.SetRealOffset(desync);
+		AntiAim.SetFakeOffset(-yaw);
 		AntiAim.SetLBYOffset(0);
 	}
 	if(preset === 3){
-        if (preset3_yaw > 18) preset3_yaw = -18; else preset3_yaw++;
-        if (preset3_dsy > 30) preset3_dsy = -30; else if (preset3_yaw < 9) preset3_dsy++;
-        
-        UI.SetValue('Anti-Aim', "Rage Anti-Aim", 'Yaw offset', preset3_yaw);
-        AntiAim.SetLBYOffset(preset3_dsy);
+        if (preset3_yaw > 18) preset3_yaw = -18; else preset3_yaw += 1.5;
+		AntiAim.SetRealOffset(60 * inv);
+		AntiAim.SetFakeOffset(preset3_yaw * inv);
+
 	}
 }
 
-Global.RegisterCallback("Draw", "aaPresets");
+Global.RegisterCallback("CreateMove", "aaPresets");
 
 
 var legit_aa_active = false;
@@ -3516,7 +3502,8 @@ function renderDtCircle(x, y, col){
 
 function renderDtAndCircle(x, y, centered, c, i){
 	var text = "dt     ";
-	if(GUI.GetValue("Visuals", "Indicators", "Indicators type") === 2 || 4) return "DT";
+	var type = GUI.GetValue("Visuals", "Indicators", "Indicators type");
+	if(type === 2 || type === 4) return "DT";
 	if (!centered) x += (Render.TextSizeCustom(text, Render.AddFont("Segoe UI", 7, 600))[0] / 2) + 1;
 	renderDtCircle(x, y + 1, [0, 0, 0, Clamp((i[4] / 1.5) * Exploit.GetCharge(), 0, 200)]);
 	renderDtCircle(x, y, [c[0], c[1] * Exploit.GetCharge(), c[2], Clamp(i[4], 0, 225)]);
@@ -4006,6 +3993,7 @@ function watermark(){
 	Render.FilledRect(x + (1 * r), y + height, width - (2 * r), 1, background);
 
 	var iconColor = color;
+	iconColor[3] = 255;
 	var gradientStyle = GUI.GetValue("Visuals", "GUI", "Windows color type");
 	if (gradientStyle == 6 || gradientStyle == 7) iconColor = GUI.Colors.HSVToRGB(Global.Realtime() / 6, 0.9, 1);
 	icon && Render.String(x + 1, y + 2, 0, "!", iconColor, 5);
@@ -4263,14 +4251,15 @@ function adaptiveJitter(){
 	if(!GUI.GetValue("Anti-Aim", "AA Presets", "Adaptive jitter")) return;
 	if (!isAlive) return;
 	var f = UI.GetValue("Anti-Aim", "Fake angles", "Enabled") || AntiAim.GetOverride();
-	var s = 15 - GUI.GetValue("Anti-Aim", "AA Presets", "Strength");
-	var min = 15;
+	var strength = GUI.GetValue("Anti-Aim", "AA Presets", "Strength");
+	var s = 15 - strength;
+	var min = strength + 5;
 	var max = (f ? 45 : 60);
 	var v = getVelocity(local);
 	var t = (Math.ceil(Globals.Tickcount() / 3) % 2);
 	var a = Clamp(Math.ceil(v / (f ? s : 4)), min, max);
 	var d = (f ? 10 : 30);
-	if(isSlowwalking()) a = Clamp(a + d, min, max);
+	if(isSlowwalking()) a = Clamp(a + (d * Clamp(strength / 2, 1, 8)), min, max);
 	if (isInAir() || Input.IsKeyPressed(0x20)) a = Clamp(a + d, min, max - (f ? 15 : 10));
 	UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Jitter offset", t ? a : -a);
 }
