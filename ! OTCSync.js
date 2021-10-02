@@ -1793,7 +1793,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Index you can use is 71
+//Index you can use is 72
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1801,6 +1801,7 @@ GUI.AddTab("Rage", "A");
 GUI.AddSubtab("General");
 GUI.AddCheckbox("Auto peek helper", 0);
 GUI.AddCheckbox("Auto enable DT", 52).master("Auto peek helper").flags(GUI.SAME_LINE);
+GUI.AddCheckbox("Auto peek decrease dmg", 71).master("Auto peek helper")
 GUI.AddCheckbox("Jumpscout", 1);
 GUI.AddCheckbox("Adaptive noscope", 43);
 GUI.AddCheckbox("Faster autoscope", 44);
@@ -2883,7 +2884,7 @@ function autopeek(){
 	}
 	if(autopeek_active){
 		block_set2 = false;
-		force_mindamage_override = 1;
+		if(GUI.GetValue("Rage", "General", "Auto peek decrease dmg")) force_mindamage_override = 1;
 		UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction", 1);
 		if(!dt) return;
 		if (!UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap")) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Doubletap");
@@ -3533,7 +3534,7 @@ function indicators(){
 	var lowdeltaActive = GUI.IsHotkeyActive("Anti-Aim", "General", "Lowdelta");
 	var aa = (lowdeltaActive ? "LOW DELTA"
 	: (isLegitAAActive() ? "LEGIT AA"
-	: (GUI.IsHotkeyActive("Anti-Aim", "General", "Freestanding") ? "FREESTANDING"
+	: (UI.GetValue("Anti-Aim", "Auto direction") ? "FREESTANDING"
 	: "DYNAMIC")));
 	var fonts, anim, c1, margin = 10, speed = 14 * Globals.Frametime() * GUI.AnimationSpeed;
 	var font = Render.AddFont("Segoe UI", 7, 600);
@@ -4018,11 +4019,15 @@ var rawcolor = GUI.GetColor("Visuals", "GUI", "Info")
 var col = [rawcolor[0],rawcolor[1],rawcolor[2], 255]
 var x = ScreenSize
 var y = 10
-var addlow = watermark ? 25 : 0
-var textfl = UI.IsHotkeyActive("Rage", "Doubletap") && Exploit.GetCharge() ? "1 | SHIFTING" : UI.IsHotkeyActive("Rage", "Hide shots") ? "1 | ONSHOT" : UI.GetValue("Anti-Aim", "Limit")
+var addlow = World.GetServerString ? watermark ? 25 : 0 : 0
+var hz = Convar.GetFloat("fps_max") == 0 ? "60" : Convar.GetFloat("fps_max")
+var textfl = UI.IsHotkeyActive("Rage", "Doubletap") && Exploit.GetCharge() ? "1 | SHIFTING": UI.IsHotkeyActive("Rage", "Hide shots") ? "1 | ONSHOT" : UI.GetValue("Anti-Aim", "Limit")
 var flsize = Render.TextSizeCustom("FL: " + textfl, font);
-var gr1 = [255 - getAntiaimDelta() * 4, getAntiaimDelta() * 4, 0, 100]
-var gr2 = [255 - getAntiaimDelta()  * 4, getAntiaimDelta() * 4, 0, 255]
+var fksize = Render.TextSizeCustom("FAKE (" + getAntiaimDelta() + ")", font)
+var hzsize = Render.TextSizeCustom("5.87ms/" + hz + "hz", font)
+var delt = getAntiaimDelta()
+var gr1 = [255 - (delt) * 4, (delt) * 4, 0, 25]
+var gr2 = [255 - (delt) * 4, (delt) * 4, 0, 255]
 	if(World.GetServerString()){
 	Render.FilledRect(x[0] - flsize[0] - 18, y + addlow, flsize[0] + 7, 17, [10, 10, 10, rawcolor[3]])
 	Render.GradientRect(x[0] - flsize[0] - 18, y + addlow + 17, flsize[0] / 2 + 5, 1, 1, [0, 0, 0, 50], col)
@@ -4030,11 +4035,16 @@ var gr2 = [255 - getAntiaimDelta()  * 4, getAntiaimDelta() * 4, 0, 255]
 	Render.StringCustom(x[0] - flsize[0] - 16, y + addlow + 4, 0, "FL: " + textfl, [0, 0, 0, 255], font)
 	Render.StringCustom(x[0] - flsize[0] - 15, y + addlow + 2, 0, "FL: " + textfl, [255, 255, 255, 255], font)
 
-	Render.GradientRect(x[0] - flsize[0] - 95, y + addlow, 37, 17, 1, [0, 0, 0, rawcolor[3] / 3], [0, 0, 0, rawcolor[3]])
-	Render.GradientRect(x[0] - flsize[0] - 58, y + addlow, 37, 17, 1, [0, 0, 0, rawcolor[3]], [0, 0, 0, rawcolor[3] / 3])
-	Render.StringCustom(x[0] - flsize[0] - 84, y + addlow + 2, 0, "FAKE (" + getAntiaimDelta() + ")", [255, 255, 255, 255], font)
-	Render.GradientRect(x[0] - flsize[0] - 97, y + addlow, 2, 8, 0, gr1, gr2)
-	Render.GradientRect(x[0] - flsize[0] - 97, y + addlow + 8, 2, 8, 0, gr2, gr1) }
+	Render.FilledRect(x[0] - flsize[0] - 90, y + addlow, fksize[0] + 10, 17, [10, 10, 10, rawcolor[3]])
+	Render.StringCustom(x[0] - flsize[0] - 85, y + addlow + 2, 0, "FAKE (" + getAntiaimDelta() + ")", [255, 255, 255, 255], font)
+	Render.GradientRect(x[0] - flsize[0] - 92, y + addlow, 2, 8, 0, gr1, gr2)
+	Render.GradientRect(x[0] - flsize[0] - 92, y + addlow + 8, 2, 8, 0, gr2, gr1) }
+
+	Render.FilledRect(x[0] - hzsize[0] - 18, y + addlow + 25, hzsize[0] + 7, 17, [10, 10, 10, rawcolor[3]])
+	Render.GradientRect(x[0] - hzsize[0] - 18, y + addlow + 42, hzsize[0] / 2 + 5, 1, 1, [255, 255, 255, 25], [255, 255, 255, 255])
+	Render.GradientRect(x[0] - hzsize[0] / 2 - 13, y + addlow + 42, hzsize[0] / 2, 1, 1, [255, 255, 255, 255], [255, 255, 255, 25])
+	Render.StringCustom(x[0] - hzsize[0] - 16, y + addlow + 29, 0, "5.87ms/" + hz + "hz", [0, 0, 0, 255], font)
+	Render.StringCustom(x[0] - hzsize[0] - 15, y + addlow + 27, 0, "5.87ms/" + hz + "hz", [255, 255, 255, 255], font)
 }
 
 Global.RegisterCallback("Draw", "Infoelements");
