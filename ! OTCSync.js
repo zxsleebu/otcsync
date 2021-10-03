@@ -11,6 +11,39 @@
 	Cheat.PrintColor([255, 74, 74, 255], "Information for the developer: error at line " + e.lineNumber + "\n");
 	return e;
 });
+//Better Cheat.Print
+const to_print = [
+    [[130, 130, 170, 255], "\n ▒█████  ▄▄▄█████▓ ▄████▄    ██████ ▓██   ██▓ ███▄    █  ▄████▄   \n"],
+    [[130, 130, 170, 255], "▒██▒  ██▒▓  ██▒ ▓▒▒██▀ ▀█  ▒██    ▒  ▒██  ██▒ ██ ▀█   █ ▒██▀ ▀█   \n"],
+	[[130, 130, 170, 255], "▒██░  ██▒▒ ▓██░ ▒░▒▓█    ▄ ░ ▓██▄     ▒██ ██░▓██  ▀█ ██▒▒▓█    ▄  \n"],
+	[[130, 130, 170, 255], "▒██   ██░░ ▓██▓ ░ ▒▓▓▄ ▄██▒  ▒   ██▒  ░ ▐██▓░▓██▒  ▐▌██▒▒▓▓▄ ▄██▒ \n"],
+	[[130, 130, 170, 255], "░ ████▓▒░  ▒██▒ ░ ▒ ▓███▀ ░▒██████▒▒  ░ ██▒▓░▒██░   ▓██░▒ ▓███▀ ░ \n"],
+	[[130, 130, 170, 255], "░ ▒░▒░▒░   ▒ ░░   ░ ░▒ ▒  ░▒ ▒▓▒ ▒ ░   ██▒▒▒ ░ ▒░   ▒ ▒ ░ ░▒ ▒  ░ \n"],
+	[[130, 130, 170, 255], "  ░ ▒ ▒░     ░      ░  ▒   ░ ░▒  ░ ░ ▓██ ░▒░ ░ ░░   ░ ▒░  ░  ▒    \n"],
+	[[130, 130, 170, 255], "░ ░ ░ ▒    ░      ░        ░  ░  ░   ▒ ▒ ░░     ░   ░ ░ ░         \n"],
+	[[130, 130, 170, 255], "    ░ ░           ░ ░            ░   ░ ░              ░ ░ ░       v7.9 [DEV BUILD] \n"],
+	[[163, 191, 115, 255], "\nWelcome, " + Cheat.GetUsername() + "!\n"],
+	[[255, 0, 0, 255], "Thanks for choosing us! \n"],
+	[[255, 0, 0, 255], "Official discord:"],
+	[[217, 217, 217, 255], " discord.gg/U7GhZ2GP46 \n"],
+	[[255, 0, 0, 255], "Dev Discords: \n"],
+	[[217, 217, 217, 255], " Soon - MoonX \n Mased#2459 - Mased \n Sleebu#0090 \n"],
+	[[255, 0, 0, 255], "You"],
+	[[255, 255, 255, 255], "Game page: "],
+	[[217, 217, 217, 255], "Soon \n"],
+	[[255, 255, 255, 255], "Broken"],
+	[[97, 136, 227, 255], "core:"],
+	[[217, 217, 217, 255], "Soon \n"],
+	[[163, 191, 115, 255], "\n [ UPDATE LOG SOON ] \n"],
+];
+
+(function(obj){
+    for (var i in obj){
+        //obj[i][0] == color
+        //obj[i][1] == text
+        Cheat.PrintColor(obj[i][0], obj[i][1]);
+    	}
+})(to_print)
 const si = "Script items";
 var GUI = Duktape.compact({
 	BackgroundOpacity: 0,
@@ -1793,7 +1826,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Index you can use is 72
+//Index you can use is 73
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1867,6 +1900,8 @@ GUI.AddCheckbox("Legit AA on E", 11);
 GUI.AddDropdown("Desync freestanding", ["None", "Peek fake", "Peek real", "Peek real (fake on autopeek)"]);
 GUI.AddCheckbox("Auto invert", 49);
 GUI.AddCheckbox("No desync on DT", 62);
+GUI.AddHotkey("left manual", "toggle");
+GUI.AddHotkey("right manual", "toggle");
 
 GUI.AddSubtab("AA Presets");
 GUI.AddDropdown("Preset", ["None", "Desync jitter", "Desync move", "Maximize delta"]);
@@ -1960,6 +1995,9 @@ GUI.AddMultiDropdown("Info elements", ["FAKE", "FL", "IO", "MS/HZ"]).flags(GUI.S
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hitlogs under crosshair", 35).additional("color");
+GUI.AddCheckbox("Manuals", 72);
+GUI.AddColor("Active manual")
+GUI.AddColor("Active inverter")
 GUI.AddColor("Menu accent/scale");
 GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']).flags(GUI.SAME_LINE);
 
@@ -2485,7 +2523,7 @@ function isRealInverted() {
 }
 
 function getAntiaimDelta(){
-	return Math.min(Math.abs(Local.GetRealYaw() - Local.GetFakeYaw()) / 2, 60).toFixed(0) - 15;
+	return Math.min(Math.abs(Local.GetRealYaw() - Local.GetFakeYaw()) / 2, 60).toFixed(0);
 }
 
 
@@ -2967,6 +3005,58 @@ function aaPresets() {
 
 Global.RegisterCallback("CreateMove", "aaPresets");
 
+function shittymanual(){
+if(!GUI.GetValue("Visuals", "GUI", "Manuals")) return;
+	isleft = GUI.IsHotkeyActive("Anti-Aim", "General", "left manual")
+	isright = GUI.IsHotkeyActive("Anti-Aim", "General", "right manual")
+	arrow = GUI.GetColor("Visuals", "GUI", "Active manual")
+	inver = GUI.GetColor("Visuals", "GUI", "Active inverter")
+	arrown = [10, 10, 10, 118]
+	var local_player = Entity.GetLocalPlayer();
+	if (Entity.IsAlive(local_player)) {
+		var a = 30, b = 44;
+		Render.Polygon([
+				[ScreenSize[0] / 2 + a, ScreenSize[1] / 2 - 7],
+				[ScreenSize[0] / 2 + b, ScreenSize[1] / 2],
+				[ScreenSize[0] / 2 + a, ScreenSize[1] / 2 + 7]
+			], isright ? [arrow[0], arrow[1], arrow[2], arrow[3]] : arrown),
+		Render.Polygon([
+				[ScreenSize[0] / 2 - a, ScreenSize[1] / 2 + 7],
+				[ScreenSize[0] / 2 - b, ScreenSize[1] / 2],
+				[ScreenSize[0] / 2 - a, ScreenSize[1] / 2 - 7]
+			], isleft ? [arrow[0], arrow[1], arrow[2], arrow[3]] : arrown)
+		Render.FilledRect(ScreenSize[0] / 2 - 28, ScreenSize[1] / 2 - 6, 2, 13, isRealInverted() ? inver : arrown);
+		Render.FilledRect(ScreenSize[0] / 2 + 26, ScreenSize[1] / 2 - 6, 2, 13, isRealInverted() ? arrown : inver);
+	}
+}
+
+Cheat.RegisterCallback("Draw", "shittymanual")
+
+var original_aa = true
+
+function manual_aa() {
+	left = GUI.IsHotkeyActive("Anti-Aim", "General", "left manual")
+	right = GUI.IsHotkeyActive("Anti-Aim", "General", "right manual")
+    var manualyaw = right ? 90 : left ? -90 : 0
+    if (right || left) {
+        if (original_aa) {
+            yaw_offset_cache = UI.GetValue("Anti-Aim", "Rage Anti-Aim", "Yaw offset");
+			attarget_cache = UI.GetValue("Anti-Aim", "Rage Anti-Aim", "At targets");
+            original_aa = false;
+        }
+		UI.SetValue("Anti-Aim", "Rage Anti-Aim", "At targets", false);
+        UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Yaw offset", manualyaw);
+    }
+    else {
+        if (!original_aa) {
+            UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Yaw offset", yaw_offset_cache);
+			UI.SetValue("Anti-Aim", "Rage Anti-Aim", "At targets", attarget_cache);
+            original_aa = true;
+        }
+    }
+}
+
+Cheat.RegisterCallback("CreateMove", "manual_aa")
 
 var legit_aa_active = false;
 var block_set3, block_set4, use_active = false;
@@ -3546,7 +3636,7 @@ function indicators(){
 	var inv = GUI.GetValue("Visuals", "Indicators", "Inverter check")
 	var custom_color = (GUI.GetValue("Visuals", "Indicators", "Indicators custom color") ? GUI.GetColor("Visuals", "Indicators", "Indicators custom color") : false);
 	var white = [255, 255, 255, 255];
-	var delta = getAntiaimDelta();
+	var delta = getAntiaimDelta() - 15;
 	var des = GUI.GetValue("Visuals", "Indicators", "Desync line")
 	
 	x = (isAcidtech || isIdealYaw) ? x + (centered ? 0 : 5) : isKillaura ? x + (centered ? 0 : 2) : x;
@@ -4005,11 +4095,22 @@ function watermark(){
 	icon && Render.String(x - 9, y + 2, 0, "!", iconColor, 5);
 	var xAdd = (icon ? IsSolus ? 8 : 5 : -6) - (6 * +IsSolus);
 	var yAdd = +IsSolus + 3;
-	Render.StringCustom(x - 9 + xAdd + 1, y + 2 + yAdd, 0, text, background, font);
+	var a = IsSolus ? 7 : 9
+	var b = IsSolus ? 4 : 2
+	Render.StringCustom(x - a + xAdd + 1, y + b + yAdd, 0, text, background, font);
 	Render.StringCustom(x - 9 + xAdd, y + yAdd, 0, text, [255, 255, 255, 255], font);
 }
 
 Global.RegisterCallback("Draw", "watermark");
+
+var fps_info = [];
+var last_timee = Global.Curtime();
+
+var easing = {
+	lerp: function(a, b, percentage) {
+		return a + (b - a) * percentage
+	}
+}
 
 function Infoelements(){
 if(!GUI.GetValue("Visuals", "GUI", "Info")) return;
@@ -4019,32 +4120,57 @@ var rawcolor = GUI.GetColor("Visuals", "GUI", "Info")
 var col = [rawcolor[0],rawcolor[1],rawcolor[2], 255]
 var x = ScreenSize
 var y = 10
-var addlow = World.GetServerString ? watermark ? 25 : 0 : 0
+var addlow = World.GetServerString() && watermark ? 25 : 0
 var hz = Convar.GetFloat("fps_max") == 0 ? "60" : Convar.GetFloat("fps_max")
 var textfl = UI.IsHotkeyActive("Rage", "Doubletap") && Exploit.GetCharge() ? "1 | SHIFTING": UI.IsHotkeyActive("Rage", "Hide shots") ? "1 | ONSHOT" : UI.GetValue("Anti-Aim", "Limit")
 var flsize = Render.TextSizeCustom("FL: " + textfl, font);
 var fksize = Render.TextSizeCustom("FAKE (" + getAntiaimDelta() + ")", font)
-var hzsize = Render.TextSizeCustom("5.87ms/" + hz + "hz", font)
-var delt = getAntiaimDelta()
+var ms_text = easing.lerp(0, Math.abs((Globals.Frametime() * 1000)), Globals.Frametime() * 8)
+var hzsize = Render.TextSizeCustom(ms_text.toFixed(1) + "ms/" + hz + "hz", font)
+var delt = getAntiaimDelta() < 0 ? 0 : getAntiaimDelta();
 var gr1 = [255 - (delt) * 4, (delt) * 4, 0, 25]
 var gr2 = [255 - (delt) * 4, (delt) * 4, 0, 255]
 	if(World.GetServerString()){
+	if(GUI.GetDropdownValue("Visuals", "GUI", "Info elements", "FL")){
 	Render.FilledRect(x[0] - flsize[0] - 18, y + addlow, flsize[0] + 7, 17, [10, 10, 10, rawcolor[3]])
 	Render.GradientRect(x[0] - flsize[0] - 18, y + addlow + 17, flsize[0] / 2 + 5, 1, 1, [0, 0, 0, 50], col)
 	Render.GradientRect(x[0] - flsize[0] / 2 - 13, y + addlow + 17, flsize[0] / 2, 1, 1, col, [0, 0, 0, 50])
 	Render.StringCustom(x[0] - flsize[0] - 16, y + addlow + 4, 0, "FL: " + textfl, [0, 0, 0, 255], font)
-	Render.StringCustom(x[0] - flsize[0] - 15, y + addlow + 2, 0, "FL: " + textfl, [255, 255, 255, 255], font)
+	Render.StringCustom(x[0] - flsize[0] - 14, y + addlow + 2, 0, "FL: " + textfl, [255, 255, 255, 255], font) }
 
+	if(GUI.GetDropdownValue("Visuals", "GUI", "Info elements", "FAKE")) {
 	Render.FilledRect(x[0] - flsize[0] - 90, y + addlow, fksize[0] + 10, 17, [10, 10, 10, rawcolor[3]])
-	Render.StringCustom(x[0] - flsize[0] - 85, y + addlow + 2, 0, "FAKE (" + getAntiaimDelta() + ")", [255, 255, 255, 255], font)
+	Render.StringCustom(x[0] - flsize[0] - 83, y + addlow + 4, 0, "FAKE (" + delt + ")", [0, 0, 0, 255], font)
+	Render.StringCustom(x[0] - flsize[0] - 85, y + addlow + 2, 0, "FAKE (" + delt + ")", [255, 255, 255, 255], font)
 	Render.GradientRect(x[0] - flsize[0] - 92, y + addlow, 2, 8, 0, gr1, gr2)
-	Render.GradientRect(x[0] - flsize[0] - 92, y + addlow + 8, 2, 8, 0, gr2, gr1) }
+	Render.GradientRect(x[0] - flsize[0] - 92, y + addlow + 8, 2, 8, 0, gr2, gr1) } }
 
+	if(GUI.GetDropdownValue("Visuals", "GUI", "Info elements", "MS/HZ")){
 	Render.FilledRect(x[0] - hzsize[0] - 18, y + addlow + 25, hzsize[0] + 7, 17, [10, 10, 10, rawcolor[3]])
 	Render.GradientRect(x[0] - hzsize[0] - 18, y + addlow + 42, hzsize[0] / 2 + 5, 1, 1, [255, 255, 255, 25], [255, 255, 255, 255])
 	Render.GradientRect(x[0] - hzsize[0] / 2 - 13, y + addlow + 42, hzsize[0] / 2, 1, 1, [255, 255, 255, 255], [255, 255, 255, 25])
-	Render.StringCustom(x[0] - hzsize[0] - 16, y + addlow + 29, 0, "5.87ms/" + hz + "hz", [0, 0, 0, 255], font)
-	Render.StringCustom(x[0] - hzsize[0] - 15, y + addlow + 27, 0, "5.87ms/" + hz + "hz", [255, 255, 255, 255], font)
+	Render.StringCustom(x[0] - hzsize[0] - 12, y + addlow + 29, 0, ms_text.toFixed(1) + "ms/" + hz + "hz", [0, 0, 0, 255], font)
+	Render.StringCustom(x[0] - hzsize[0] - 14, y + addlow + 27, 0, ms_text.toFixed(1) + "ms/" + hz + "hz", [255, 255, 255, 255], font) }
+
+	if(GUI.GetDropdownValue("Visuals", "GUI", "Info elements", "IO")){
+	Render.FilledRect(x[0] - hzsize[0] - 84, y + addlow + 25, 54, 17, [10, 10, 10, rawcolor[3]]);
+	Render.StringCustom(x[0] - hzsize[0] - 78, y + addlow + 29, 0, "IO | ", [0, 0, 0, 255], font)
+	Render.StringCustom(x[0] - hzsize[0] - 80, y + addlow + 27, 0, "IO | ", [255, 255, 255, 255], font)
+	var avg = {
+		'fps': 0
+	};
+	if (Global.Curtime() - last_timee > 0.5) {
+		last_timee = Global.Curtime();
+		fps_info.unshift(1 / Global.Frametime());
+	}
+	if (fps_info.length > 4)
+		fps_info.pop();
+	var fps_max = Convar.GetInt("fps_max") + 20 || 400 + 20;
+	for (i = 0; i < fps_info.length; i++) {
+		avg.fps += fps_info[i]
+		Render.GradientRect(x[0] - i * 5 - hzsize[0] - 39, y + addlow + 40 - fps_info[i] / fps_max * 25, 5, fps_info[i] / fps_max * 25, 0, [35, 35, 95, 0], col);
+		}
+	}
 }
 
 Global.RegisterCallback("Draw", "Infoelements");
