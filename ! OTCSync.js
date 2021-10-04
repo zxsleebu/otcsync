@@ -13,27 +13,27 @@
 });
 //Better Cheat.Print
 const to_print = [
-    [[130, 130, 170, 255], "\n ▒█████  ▄▄▄█████▓ ▄████▄    ██████ ▓██   ██▓ ███▄    █  ▄████▄   \n"],
-    [[130, 130, 170, 255], "▒██▒  ██▒▓  ██▒ ▓▒▒██▀ ▀█  ▒██    ▒  ▒██  ██▒ ██ ▀█   █ ▒██▀ ▀█   \n"],
-	[[130, 130, 170, 255], "▒██░  ██▒▒ ▓██░ ▒░▒▓█    ▄ ░ ▓██▄     ▒██ ██░▓██  ▀█ ██▒▒▓█    ▄  \n"],
-	[[130, 130, 170, 255], "▒██   ██░░ ▓██▓ ░ ▒▓▓▄ ▄██▒  ▒   ██▒  ░ ▐██▓░▓██▒  ▐▌██▒▒▓▓▄ ▄██▒ \n"],
-	[[130, 130, 170, 255], "░ ████▓▒░  ▒██▒ ░ ▒ ▓███▀ ░▒██████▒▒  ░ ██▒▓░▒██░   ▓██░▒ ▓███▀ ░ \n"],
-	[[130, 130, 170, 255], "░ ▒░▒░▒░   ▒ ░░   ░ ░▒ ▒  ░▒ ▒▓▒ ▒ ░   ██▒▒▒ ░ ▒░   ▒ ▒ ░ ░▒ ▒  ░ \n"],
-	[[130, 130, 170, 255], "  ░ ▒ ▒░     ░      ░  ▒   ░ ░▒  ░ ░ ▓██ ░▒░ ░ ░░   ░ ▒░  ░  ▒    \n"],
-	[[130, 130, 170, 255], "░ ░ ░ ▒    ░      ░        ░  ░  ░   ▒ ▒ ░░     ░   ░ ░ ░         \n"],
-	[[130, 130, 170, 255], "    ░ ░           ░ ░            ░   ░ ░              ░ ░ ░       v7.9 [DEV BUILD] \n"],
+    [[124, 129, 252, 255], "\n ▒█████  ▄▄▄█████▓ ▄████▄    ██████ ▓██   ██▓ ███▄    █  ▄████▄   \n"],
+    [[124, 129, 252, 255], "▒██▒  ██▒▓  ██▒ ▓▒▒██▀ ▀█  ▒██    ▒  ▒██  ██▒ ██ ▀█   █ ▒██▀ ▀█   \n"],
+	[[124, 129, 252, 255], "▒██░  ██▒▒ ▓██░ ▒░▒▓█    ▄ ░ ▓██▄     ▒██ ██░▓██  ▀█ ██▒▒▓█    ▄  \n"],
+	[[124, 129, 252, 255], "▒██   ██░░ ▓██▓ ░ ▒▓▓▄ ▄██▒  ▒   ██▒  ░ ▐██▓░▓██▒  ▐▌██▒▒▓▓▄ ▄██▒ \n"],
+	[[124, 129, 252, 255], "░ ████▓▒░  ▒██▒ ░ ▒ ▓███▀ ░▒██████▒▒  ░ ██▒▓░▒██░   ▓██░▒ ▓███▀ ░ \n"],
+	[[124, 129, 252, 255], "░ ▒░▒░▒░   ▒ ░░   ░ ░▒ ▒  ░▒ ▒▓▒ ▒ ░   ██▒▒▒ ░ ▒░   ▒ ▒ ░ ░▒ ▒  ░ \n"],
+	[[124, 129, 252, 255], "  ░ ▒ ▒░     ░      ░  ▒   ░ ░▒  ░ ░ ▓██ ░▒░ ░ ░░   ░ ▒░  ░  ▒    \n"],
+	[[124, 129, 252, 255], "░ ░ ░ ▒    ░      ░        ░  ░  ░   ▒ ▒ ░░     ░   ░ ░ ░         \n"],
+	[[124, 129, 252, 255], "    ░ ░           ░ ░            ░   ░ ░              ░ ░ ░       v7.9 [DEV BUILD] \n"],
 	[[163, 191, 115, 255], "\nWelcome, " + Cheat.GetUsername() + "!\n"],
 	[[255, 0, 0, 255], "Thanks for choosing us! \n"],
 	[[255, 0, 0, 255], "Official discord:"],
 	[[217, 217, 217, 255], " discord.gg/U7GhZ2GP46 \n"],
 	[[255, 0, 0, 255], "Dev Discords: \n"],
-	[[217, 217, 217, 255], " Soon - MoonX \n Mased#2459 - Mased \n Sleebu#0090 \n"],
+	[[217, 217, 217, 255], " Sleebu#0090 - Sleebu \n Soon - MoonX \n Mased#2459 - Mased \n"],
 	[[255, 0, 0, 255], "You"],
-	[[255, 255, 255, 255], "Game page: "],
+	[[255, 255, 255, 255], "Game: "],
 	[[217, 217, 217, 255], "Soon \n"],
 	[[255, 255, 255, 255], "Broken"],
 	[[97, 136, 227, 255], "core:"],
-	[[217, 217, 217, 255], "Soon \n"],
+	[[217, 217, 217, 255], " Soon \n"],
 	[[163, 191, 115, 255], "\n [ UPDATE LOG SOON ] \n"],
 ];
 
@@ -153,7 +153,7 @@ GUI.InitElements = function(){
 						GUI.ColorPickers.push(Element);
 						UI.AddColorPicker(Element);
 						UI.SetEnabled(si, Element, 0);
-						UI.SetColor(si, Element, GUI.Colors.ActiveElement);
+						//UI.SetColor(si, Element, GUI.Colors.ActiveElement);
 						break;
 					}
 					case "dropdown": {
@@ -190,7 +190,7 @@ GUI.InitElements = function(){
 	GUI.LoadElements();
 }
 GUI.LoadElements = function(){
-	if(GUI._LoadedCount > 16) return true;
+	if(GUI._LoadedCount > 32) return true;
 	for(TabName in GUI._MenuElements){
 		for(SubtabName in GUI._MenuElements[TabName]){
 			for(Element in GUI._MenuElements[TabName][SubtabName]){
@@ -4106,12 +4106,6 @@ Global.RegisterCallback("Draw", "watermark");
 var fps_info = [];
 var last_timee = Global.Curtime();
 
-var easing = {
-	lerp: function(a, b, percentage) {
-		return a + (b - a) * percentage
-	}
-}
-
 function Infoelements(){
 if(!GUI.GetValue("Visuals", "GUI", "Info")) return;
 var watermark = GUI.GetValue("Visuals", "GUI", "Watermark")
@@ -4125,7 +4119,7 @@ var hz = Convar.GetFloat("fps_max") == 0 ? "60" : Convar.GetFloat("fps_max")
 var textfl = UI.IsHotkeyActive("Rage", "Doubletap") && Exploit.GetCharge() ? "1 | SHIFTING": UI.IsHotkeyActive("Rage", "Hide shots") ? "1 | ONSHOT" : UI.GetValue("Anti-Aim", "Limit")
 var flsize = Render.TextSizeCustom("FL: " + textfl, font);
 var fksize = Render.TextSizeCustom("FAKE (" + getAntiaimDelta() + ")", font)
-var ms_text = easing.lerp(0, Math.abs((Globals.Frametime() * 1000)), Globals.Frametime() * 8)
+var ms_text = Lerp(0, Math.abs((Globals.Frametime() * 1000)), Globals.Frametime() * 8)
 var hzsize = Render.TextSizeCustom(ms_text.toFixed(1) + "ms/" + hz + "hz", font)
 var delt = getAntiaimDelta() < 0 ? 0 : getAntiaimDelta();
 var gr1 = [255 - (delt) * 4, (delt) * 4, 0, 25]
@@ -4168,7 +4162,7 @@ var gr2 = [255 - (delt) * 4, (delt) * 4, 0, 255]
 	var fps_max = Convar.GetInt("fps_max") + 20 || 400 + 20;
 	for (i = 0; i < fps_info.length; i++) {
 		avg.fps += fps_info[i]
-		Render.GradientRect(x[0] - i * 5 - hzsize[0] - 39, y + addlow + 40 - fps_info[i] / fps_max * 25, 5, fps_info[i] / fps_max * 25, 0, [35, 35, 95, 0], col);
+		Render.GradientRect(x[0] - i * 5 - hzsize[0] - 39, y + addlow + 40 - fps_info[i] / fps_max * 15, 5, fps_info[i] / fps_max * 15, 0, [col[0], col[1], col[2], 0], col);
 		}
 	}
 }
