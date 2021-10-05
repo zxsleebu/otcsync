@@ -4621,7 +4621,7 @@ function hitShotsHandle(){
 		}
 		if(damageMarkerEnabled){
 			var col = GUI.GetColor("Visuals", "Players", "Damage marker");
-			y = y - 16 - Math.floor(time / 2);
+			y = y - 16 - Math.floor((time / VectorDistance(Entity.GetRenderOrigin(local), hitShots[shot][1])) * 200);
 			x = x - 15 + hitShots[shot][3];
 			col[3] = alpha;
 			var font = Render.AddFont("Verdana", 8, 600);
