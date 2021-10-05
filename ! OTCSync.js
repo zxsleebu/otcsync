@@ -565,11 +565,12 @@ GUI.DrawCheckbox = function(x, y, name, id, state){
 	else GUI._ElementAnimation[id] -= 0.06 * adapt;
 	GUI._ElementAnimation[id] = Clamp(GUI._ElementAnimation[id], 0, 1);
 	if(CheckboxState){
-		var ElementEndX = Clamp(CheckboxTextX + CheckboxTextSize[0] + 8, CheckboxTextX + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX + GUI.Scale(GUI.Width) - 4);
+		var CheckboxTextX2 = x + 18;
+		var ElementEndX = Clamp(CheckboxTextX2 + CheckboxTextSize[0] + 8, CheckboxTextX2 + GUI.ContainerWidth - CheckboxWidth, CheckboxTextX2 + GUI.Scale(GUI.Width));
 		if(Element.Color !== undefined) GUI.DrawColor(ElementEndX, y, name, id, true);
 		else if(Element.Submenu !== undefined){
 			var x = ElementEndX + GUI.Scale(4);
-			var y = y + GUI.Scale(21);
+			var y = y + 21;
 			//GUI.DrawSubmenu(x, y, id);
 		}
 	}
@@ -773,7 +774,8 @@ GUI.DrawColor = function(x, y, name, id, isAdditional){
 	var ColorBoxY = y + GUI.Scale(18);
 	if(!isAdditional){
 		Render.StringCustom(ColorBoxTextX, y + 14, 0, name, ColorBoxTextColor, GUI.Fonts.Menu);
-		var ColorBoxX = Clamp(ColorBoxTextX + ColorBoxTextSize[0] + 8, ColorBoxTextX + GUI.ContainerWidth - ColorBoxWidth, ColorBoxTextX + GUI.Scale(GUI.Width));
+		var ColorBoxTextX2 = x + 18;
+		var ColorBoxX = Clamp(ColorBoxTextX2 + ColorBoxTextSize[0] + 8, ColorBoxTextX2 + GUI.ContainerWidth - ColorBoxWidth, ColorBoxTextX2 + GUI.Scale(GUI.Width));
 	}
 	else{
 		var ColorBoxX = x;
@@ -1479,6 +1481,7 @@ GUI.SetValue = function(tab, subtab, name, value, setnotdef){
 GUI.GetValue = function(tab, subtab, name, cache){
 	if(cache === null || (typeof cache) === "undefined") var cache = false;
 	var Id = name + tab[0] + subtab[0];
+	if(!(tab in GUI._MenuElements) || !(subtab in GUI._MenuElements[tab])) return Cheat.Print("Cannot find element [" + tab + ", " + subtab + ", " + name + "]\n");
 	var Element = GUI._MenuElements[tab][subtab][Id];
 	if(typeof Element === "undefined") return Cheat.Print("Cannot find element [" + tab + ", " + subtab + ", " + name + "]\n");
 	switch(Element.Type){
@@ -1833,13 +1836,14 @@ GUI.AddTab("Rage", "A");
 
 GUI.AddSubtab("General");
 GUI.AddCheckbox("Auto peek helper", 0);
-GUI.AddCheckbox("Auto enable DT", 52).master("Auto peek helper").flags(GUI.SAME_LINE);
-GUI.AddCheckbox("Auto peek decrease dmg", 71).master("Auto peek helper")
+GUI.AddMultiDropdown("Auto peek settings", ["Enable Hide shots", "Decrease min-dmg"]).flags(GUI.SAME_LINE).master("Auto peek helper");
 GUI.AddCheckbox("Jumpscout", 1);
 GUI.AddCheckbox("Adaptive noscope", 43);
 GUI.AddCheckbox("Faster autoscope", 44);
 GUI.AddCheckbox("AWP switch after shot", 51);
 GUI.AddCheckbox("Leg prediction", 56);
+GUI.AddMultiDropdown("Safe point conditions", ["Lethal", "Slowwalking", "On AWP"]);
+GUI.AddMultiDropdown("Safe point hitboxes", ["Head", "Body", "Chest", "Legs", "Feet"]).flags(GUI.SAME_LINE);
 
 GUI.AddSubtab("Min-DMG");
 GUI.AddCheckbox("Two shot on Auto", 4);
@@ -1869,12 +1873,6 @@ GUI.AddSlider("Scout Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").
 GUI.AddSlider("AWP Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
 GUI.AddSlider("Auto Override 2 Min-DMG", 1, 130, 1).master(dmg_el_name + " 2").flags(GUI.NO_DEFAULT);
 
-GUI.AddSubtab("Safe points");
-GUI.AddCheckbox("Safe points on limbs", 5);
-GUI.AddCheckbox("Safe points if slowwalking", 6);
-GUI.AddCheckbox("Safe points if lethal", 7);
-GUI.AddCheckbox("Safe points on AWP", 48);
-
 GUI.AddSubtab("Doubletap");
 
 //хуй вам а не беттер дт))0)00)
@@ -1886,7 +1884,7 @@ GUI.AddSlider("Extrapolate ticks", 4, 16, 4);
 
 GUI.AddSubtab("Other");
 GUI.AddHotkey("Extended backtracking", "hold");
-GUI.AddHotkey("Force head", "hold");
+//GUI.AddHotkey("Force head", "hold");
 GUI.AddHotkey("Force backshoot", "hold");
 GUI.AddCheckbox("Custom zeus hitchance", 10);
 GUI.AddSlider("Hitchance", 0, 100, 90).master("Custom zeus hitchance");
@@ -1920,8 +1918,8 @@ GUI.AddSlider("Fake lag choke", 6, 15, 14).master("Static legs");
 GUI.AddCheckbox("No fake lag on revolver", 17);
 GUI.AddCheckbox("No fake lag on nades", 18);
 
-GUI.AddSubtab("Matchmaking FD");
-GUI.AddCheckbox("Matchmaking FD", 19);
+//GUI.AddSubtab("Matchmaking FD");
+//GUI.AddCheckbox("Matchmaking FD", 19);
 
 GUI.AddSubtab("Other");
 GUI.AddCheckbox("Legbreaker", 12);
@@ -1930,7 +1928,7 @@ GUI.AddSlider("Legbreaker speed", 2, 10, 6).master("Legbreaker");
 GUI.AddTab("Visuals", "C");
 
 GUI.AddSubtab("World");
-GUI.AddCheckbox("Custom Bloom", 20);
+//GUI.AddCheckbox("Custom Bloom", 20);
 GUI.AddSlider("World brightness", -50, 0, 0);
 GUI.AddCheckbox("Nade prediction", 27).additional("color");
 GUI.AddCheckbox("Line tracer", 61).master("Nade prediction").flags(GUI.SAME_LINE);
@@ -1989,16 +1987,14 @@ GUI.AddSubtab("GUI");
 GUI.AddDropdown("Windows style", ['OTC SYNC', 'Solus UI', 'Solus UI w\\o icon']);
 GUI.AddDropdown("Windows color type", ["Solid", "Fade left and right", "Fade to left", "Fade to right", "Sket" /* не изменять!! */, "Sket 2", "Rainbow", "More rainbow", "No line"]).flags(GUI.SAME_LINE);
 GUI.AddCheckbox("Watermark", 31).additional("color");
-GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE).master("Watermark");
-GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE);
+GUI.AddMultiDropdown("Watermark elements", ["Username", "K/D", "IP", "Tickrate", "Ping", "FPS", "Time"]).flags(GUI.SAME_LINE).master("Watermark");
 GUI.AddCheckbox("Info", 70).additional("color")
 GUI.AddMultiDropdown("Info elements", ["FAKE", "FL", "IO", "MS/HZ"]).flags(GUI.SAME_LINE).master("Info")
 GUI.AddCheckbox("Keybind list", 33).additional("color");
 GUI.AddCheckbox("Spectator list", 34).additional("color");
 GUI.AddCheckbox("Hitlogs under crosshair", 35).additional("color");
-GUI.AddCheckbox("Manuals", 72);
-GUI.AddColor("Active manual")
-GUI.AddColor("Active inverter")
+GUI.AddCheckbox("Manuals", 72).additional("color");
+GUI.AddColor("Active inverter").master("Manuals");
 GUI.AddColor("Menu accent/scale");
 GUI.AddDropdown("GUI Scale", ['100%', '75%', '125%', '150%']).flags(GUI.SAME_LINE);
 
@@ -2143,12 +2139,12 @@ function ExtrapolateTick(player, ticks, hitbox) {
 	return array[0] = pos[0] + velocity[0] * Globals.TickInterval() * ticks, array[1] = pos[1] + velocity[1] * Globals.TickInterval() * ticks, array[2] = pos[2] + velocity[2] * Globals.TickInterval() * ticks, array;
 }
 function IsLethal(player) {
+	if (!local || !isAlive || !Entity.IsValid(player) || !Entity.IsAlive(player)) return false;
 	var health = Entity.GetProp(player, 'CBasePlayer', 'm_iHealth');
-	thorax_pos = Entity.GetHitboxPosition(player, 4);
-	var local = local;
-	result_thorax = Trace.Bullet(local, player, Entity.GetEyePosition(local), thorax_pos);
+	var thorax_pos = Entity.GetHitboxPosition(player, 4);
+	var result_thorax = Trace.Bullet(local, player, Entity.GetEyePosition(local), thorax_pos);
 	if (result_thorax[1] >= health) return true;
-	result_thorax_extrapolated = Trace.Bullet(local, player, ExtrapolateTick(local, 14, 0), thorax_pos);
+	var result_thorax_extrapolated = Trace.Bullet(local, player, ExtrapolateTick(local, 14, 0), thorax_pos);
 	if (result_thorax_extrapolated[1] >= health) return true;
 	return false;
 }
@@ -2534,6 +2530,7 @@ function enemies(){
 	if(!isAlive) return;
 	for(enemy in enemies){
 		var enemy = enemies[enemy];
+		if(!Entity.IsValid(enemy) || !Entity.IsAlive(enemy)) continue;
 		jumpscout(enemy);
 		safePoints(enemy);
 		autoPeek2(enemy);
@@ -2700,33 +2697,38 @@ function lowdelta(){
 
 Global.RegisterCallback("CreateMove", "lowdelta");
 
-function safePointsOnLimbs(){
-	if(!GUI.GetValue("Rage", "Safe points", "Safe points on limbs")) return;
-	Ragebot.ForceHitboxSafety(9);
-	Ragebot.ForceHitboxSafety(10);
-	Ragebot.ForceHitboxSafety(11);
-	Ragebot.ForceHitboxSafety(12);
+function safePointsHitboxes(){
+	var h = GUI.GetValue("Rage", "General", "Safe point hitboxes");
+	var s = Ragebot.ForceHitboxSafety;
+	if (h & (1 << 0)) s(0)
+	if (h & (1 << 1)) s(3)
+	if (h & (1 << 2)) s(5), s(6)
+	if (h & (1 << 3)) s(9), s(10)
+	if (h & (1 << 4)) s(11), s(12)
 }
 
-Global.RegisterCallback("CreateMove", "safePointsOnLimbs");
+Global.RegisterCallback("CreateMove", "safePointsHitboxes");
 
 function safePoints(enemy){
-	if(GUI.GetValue("Rage", "Safe points", "Safe points if slowwalking")){
+	if(GUI.GetDropdownValue("Rage", "General", "Safe point conditions", "Slowwalking")){
 		var vel = getVelocity(enemy);
-		if(vel > 10 && vel < 150){
-			Ragebot.ForceTargetSafety(enemy);
-		}
+		if(vel > 10 && vel < 125) Ragebot.ForceTargetSafety(enemy);
 	}
-	if(GUI.GetValue("Rage", "Safe points", "Safe points if lethal")){
-		if(IsLethal(enemy)){
-			Ragebot.ForceTargetSafety(enemy);
-		}
+	if(GUI.GetDropdownValue("Rage", "General", "Safe point conditions", "Lethal")){
+		//IsLethal is broken now, so...
+		var w = getWeaponName();
+		var h = Entity.GetProp(enemy, "CBasePlayer", "m_iHealth");
+		if(	w == "SSG08" 	&& h <= 90 	||
+			w == "Deagle" 	&& h <= 40 	||
+			w == "Revolver" && h <= 50 	||
+			w == "SCAR20" 	&& h <= 50 	||
+			w == "G3SG1" 	&& h <= 50) Ragebot.ForceTargetSafety(enemy);
 	}
 }
 
 function safeAWP(){
 	if(!isAlive) return;
-	if(!GUI.GetValue("Rage", "Safe points", "Safe points on AWP")) return;
+	if(GUI.GetDropdownValue("Rage", "General", "Safe point conditions", "On AWP")) return;
 	if(getWeaponName() === "AWP") for(i = 0; i <= 12; i++) Ragebot.ForceHitboxSafety(i);
 }
 
@@ -2914,7 +2916,7 @@ function autopeek(){
 	if(!isAlive){if(Globals.Tickcount() > hideshots_enable_time) hideshots_enable_time = hideshots_enable_time = false; return;}
 	if(!GUI.GetValue("Rage", "General", "Auto peek helper")) return;
 	autopeek_active = isAutopeeking();
-	var dt = GUI.GetValue("Rage", "General", "Auto enable DT");
+	var dt = GUI.GetDropdownValue("Rage", "General", "Auto peek settings", "Enable Hide shots");
 	if(hideshots_enable_time !== false && isAutopeeking()){
 		var enabled = Globals.Tickcount() > hideshots_enable_time;
 		if (UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Hide shots") && !enabled) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Hide shots");
@@ -2923,16 +2925,16 @@ function autopeek(){
 	}
 	if(autopeek_active){
 		block_set2 = false;
-		if(GUI.GetValue("Rage", "General", "Auto peek decrease dmg")) force_mindamage_override = 1;
+		if(GUI.GetDropdownValue("Rage", "General", "Auto peek settings", "Decrease min-dmg") && getWeaponName() !== "AWP") force_mindamage_override = 1;
 		UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction", 1);
 		if(!dt) return;
-		if (!UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap")) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Doubletap");
-		GUI.OverrideState("Misc", "Keybinds fixer", "Doubletap", true);
+		if (!UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Hide shots")) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Hide shots");
+		GUI.OverrideState("Misc", "Keybinds fixer", "Hide shots", true);
 	}
 	else{
 		if(!block_set2){
 			force_mindamage_override = false;
-			if (UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Doubletap") && dt) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Doubletap");
+			if (UI.IsHotkeyActive("Rage", "GENERAL", "Exploits", "Hide shots") && dt) UI.ToggleHotkey("Rage", "GENERAL", "Exploits", "Hide shots");
 			//GUI.OverrideState("Misc", "Keybinds fixer", "Doubletap", false);
 			UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Auto direction", freestanding_bak);
 			block_set2 = true;
@@ -3010,7 +3012,7 @@ function shittymanual(){
 if(!GUI.GetValue("Visuals", "GUI", "Manuals")) return;
 	isleft = GUI.IsHotkeyActive("Anti-Aim", "General", "left manual")
 	isright = GUI.IsHotkeyActive("Anti-Aim", "General", "right manual")
-	arrow = GUI.GetColor("Visuals", "GUI", "Active manual")
+	arrow = GUI.GetColor("Visuals", "GUI", "Manuals")
 	inver = GUI.GetColor("Visuals", "GUI", "Active inverter")
 	arrown = [10, 10, 10, 118]
 	var local_player = Entity.GetLocalPlayer();
@@ -3176,7 +3178,8 @@ var mm_fakeduck_active = false;
 var fd_crouch = true;
 function mmFakeduck(){
 	if(!isAlive) return;
-	if(!GUI.GetValue("Anti-Aim", "Matchmaking FD", "Matchmaking FD")) return;
+	return;
+	//if(!GUI.GetValue("Anti-Aim", "Matchmaking FD", "Matchmaking FD")) return;
 	var buttons = UserCMD.GetButtons();
 	if (!isFD()){
 		mm_fakeduck_active = false;
@@ -3856,13 +3859,13 @@ var keybind_list_y = GetVal("keybind_list_y") || 200;
 var keybind_list_is_moving = false;
 var keybind_list_old_cursor = [0, 0];
 var keybinds_paths = [
-//	Name					Path to keybind GUI or UI								GUI alternative for this bind					Method to get value	Alpha
+//	Name					Path to keybind GUI or UI								GUI alternative for this bind					Method to get value		Alpha
 //	0						1														2												3						4
 	["Min-dmg override",	["Rage", "Min-DMG Override", "Min-damage override"],	true,											GUI.IsHotkeyActive,		0],
 	["Min-dmg override 2",	["Rage", "Min-DMG Override", "Min-damage override 2"],	true,											GUI.IsHotkeyActive,		0],
 	["Doubletap",			["Rage", "GENERAL", "Exploits", "Doubletap"],			["Misc", "Keybinds fixer", "Doubletap"],		UI.IsHotkeyActive,		0],
 	["Hide shots",			["Rage", "GENERAL", "Exploits", "Hide shots"],			["Misc", "Keybinds fixer", "Hide shots"],		UI.IsHotkeyActive,		0],
-	["Ping Spike",		        ["Rage", "Other", "Extended backtracking"],			    true,											GUI.IsHotkeyActive,		0],
+	["Ping Spike",			["Rage", "Other", "Extended backtracking"],				true,											GUI.IsHotkeyActive,		0],
 	["Force backshoot",		["Rage", "Other", "Force backshoot"],					true,											GUI.IsHotkeyActive,		0],
 	["Fake duck",			["Anti-Aim", "Extra", "Fake duck"],						["Misc", "Keybinds fixer", "Fake duck"],		UI.IsHotkeyActive,		0],
 	["Lowdelta", 			["Anti-Aim", "General", "Lowdelta"],					true,											GUI.IsHotkeyActive,		0],
@@ -3874,6 +3877,7 @@ var keybinds_paths = [
 	["Thirdperson", 		["Visual", "World", "View", "Thirdperson"], 			["Misc", "Keybinds fixer", "Thirdperson"],		UI.IsHotkeyActive,		0],
 	["Inverter", 			["Anti-Aim", "Fake angles", "Inverter"], 				["Misc", "Keybinds fixer", "Inverter"],			UI.IsHotkeyActive,		0],
 	["Resolver override", 	["Rage", "GENERAL", "General", "Resolver override"],	null,											UI.IsHotkeyActive,		0],
+	["Slow walk",			["Anti-Aim", "Extra", "Slow walk"],						null,											UI.IsHotkeyActive,		0]
 ];
 function keybindList(){
 	if(!GUI.GetValue("Visuals", "GUI", "Keybind list")) return;
@@ -3961,7 +3965,7 @@ function spectatorList(){
 		if(!(player in spectators_alpha)) spectators_alpha[player] = 0;
 		if(player === local) continue;
 		var observer = Entity.GetProp(player, "DT_BasePlayer", "m_hObserverTarget");
-		var active = player && !Entity.IsAlive(player) && (observer && observer !== "m_hObserverTarget" && Entity.IsValid(observer) && Entity.IsAlive(observer))
+		var active = player && !Entity.IsAlive(player) && !Entity.IsDormant(player) && (observer && observer !== "m_hObserverTarget" && Entity.IsValid(observer) && Entity.IsAlive(observer))
 		&& (isAlive ? (observer === local) : (observer == Entity.GetProp(local,"DT_BasePlayer","m_hObserverTarget")));
 		var specmode = spectator_modes[+Entity.GetProp(player, "DT_BasePlayer", "m_iObserverMode")];
 		active = active && (specmode != "none");
@@ -4036,6 +4040,10 @@ var watermark_elements = {
 		var assists = Entity.GetProp(local, "CPlayerResource", "m_iAssists");
 		if(deaths === 0) deaths = 1;
 		return "K/D: " + ((kills + assists) / deaths).toFixed(2);
+	},
+	"IP": function(){
+		if(!World.GetServerString()) return null;
+		return World.GetServerString();
 	},
 	"Tickrate": function(){
 		if(!World.GetServerString()) return null;
