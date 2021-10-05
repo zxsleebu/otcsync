@@ -21,7 +21,7 @@ const to_print = [
 	[[124, 129, 252, 255], "░ ▒░▒░▒░   ▒ ░░   ░ ░▒ ▒  ░▒ ▒▓▒ ▒ ░   ██▒▒▒ ░ ▒░   ▒ ▒ ░ ░▒ ▒  ░ \n"],
 	[[124, 129, 252, 255], "  ░ ▒ ▒░     ░      ░  ▒   ░ ░▒  ░ ░ ▓██ ░▒░ ░ ░░   ░ ▒░  ░  ▒    \n"],
 	[[124, 129, 252, 255], "░ ░ ░ ▒    ░      ░        ░  ░  ░   ▒ ▒ ░░     ░   ░ ░ ░         \n"],
-	[[124, 129, 252, 255], "    ░ ░           ░ ░            ░   ░ ░              ░ ░ ░       v7.9 [DEV BUILD] \n"],
+	[[124, 129, 252, 255], "    ░ ░           ░ ░            ░   ░ ░              ░ ░ ░       v8.3 [DEV BUILD] \n"],
 	[[163, 191, 115, 255], "\nWelcome, " + Cheat.GetUsername() + "!\n"],
 	[[255, 0, 0, 255], "Thanks for choosing us! \n"],
 	[[255, 0, 0, 255], "Official discord:"],
@@ -1826,7 +1826,7 @@ function GetVal(name){
 GUI = Duktape.compact(GUI);
 Duktape.gc();
 
-//Index you can use is 73
+//Index you can use is 74
 GUI.Init("OTC SYNC DEV");
 
 GUI.AddTab("Rage", "A");
@@ -1938,6 +1938,7 @@ GUI.AddCheckbox("Trail", 29).additional("color");
 GUI.AddCheckbox("Rainbow", 66).master("Trail").flags(GUI.SAME_LINE)
 GUI.AddSlider("Length", 0, 200, 25).master("Trail");
 GUI.AddCheckbox("Party Zeus", 21);
+GUI.AddCheckbox("Keystrokes", 73)
 GUI.AddCheckbox("Rainbow Line", 68);
 GUI.AddSlider("Height", 1, 5, 2).master("Rainbow Line");
 
@@ -4097,7 +4098,7 @@ function watermark(){
 	var yAdd = +IsSolus + 3;
 	var a = IsSolus ? 7 : 9
 	var b = IsSolus ? 4 : 2
-	Render.StringCustom(x - a + xAdd + 1, y + b + yAdd, 0, text, background, font);
+	Render.StringCustom(x - 2 - a + xAdd + 1, y + b + yAdd - 2, 0, text, [0, 0, 0, 255], font);
 	Render.StringCustom(x - 9 + xAdd, y + yAdd, 0, text, [255, 255, 255, 255], font);
 }
 
@@ -4127,9 +4128,9 @@ var gr2 = [255 - (delt) * 4, (delt) * 4, 0, 255]
 	if(World.GetServerString()){
 	if(GUI.GetDropdownValue("Visuals", "GUI", "Info elements", "FL")){
 	Render.FilledRect(x[0] - flsize[0] - 18, y + addlow, flsize[0] + 7, 17, [10, 10, 10, rawcolor[3]])
-	Render.GradientRect(x[0] - flsize[0] - 18, y + addlow + 17, flsize[0] / 2 + 5, 1, 1, [0, 0, 0, 50], col)
-	Render.GradientRect(x[0] - flsize[0] / 2 - 13, y + addlow + 17, flsize[0] / 2, 1, 1, col, [0, 0, 0, 50])
-	Render.StringCustom(x[0] - flsize[0] - 16, y + addlow + 4, 0, "FL: " + textfl, [0, 0, 0, 255], font)
+	Render.GradientRect(x[0] - flsize[0] - 18, y + addlow + 17, flsize[0] / 2 + 5, 1, 1, [col[0], col[1], col[2], 0], col)
+	Render.GradientRect(x[0] - flsize[0] / 2 - 13, y + addlow + 17, flsize[0] / 2 + 2, 1, 1, col, [col[0], col[1], col[2], 0])
+	Render.StringCustom(x[0] - flsize[0] - 12, y + addlow + 4, 0, "FL: " + textfl, [0, 0, 0, 255], font)
 	Render.StringCustom(x[0] - flsize[0] - 14, y + addlow + 2, 0, "FL: " + textfl, [255, 255, 255, 255], font) }
 
 	if(GUI.GetDropdownValue("Visuals", "GUI", "Info elements", "FAKE")) {
@@ -4168,6 +4169,29 @@ var gr2 = [255 - (delt) * 4, (delt) * 4, 0, 255]
 }
 
 Global.RegisterCallback("Draw", "Infoelements");
+
+function wasdindicator()
+{
+	if(!GUI.GetValue("Visuals", "World", "Keystrokes")) return;
+	var font = Render.AddFont("Verdana", 18, 600);
+	var rgb = GUI.Colors.HSVToRGB(Globals.Realtime() + (i / 200) % 1, 1, 1);
+        Render.FilledRect( 50, 400, 45, 45, Input.IsKeyPressed(0x57) ? [ 10, 10, 10, 113 ] : [ 10, 10, 10, 68 ]);
+        Render.String( 73, 415, 3, "W", [rgb[2],rgb[0],rgb[1], 255] );
+
+        Render.FilledRect( 5, 445, 45, 45, Input.IsKeyPressed(0x41) ? [ 10, 10, 10, 113 ] : [ 10, 10, 10, 68 ]);
+        Render.String( 28.5, 460, 3, "A", [rgb[2],rgb[0],rgb[1], 255] );
+
+        Render.FilledRect( 50, 445, 45, 45, Input.IsKeyPressed(0x53) ? [ 10, 10, 10, 113 ] : [ 10, 10, 10, 68 ]);
+        Render.String( 73, 460, 3, "S", [rgb[2],rgb[0],rgb[1], 255] );
+
+        Render.FilledRect( 95, 445, 45, 45, Input.IsKeyPressed(0x44) ? [ 10, 10, 10, 113 ] : [ 10, 10, 10, 68 ]);
+        Render.String( 117, 460, 3, "D", [rgb[2],rgb[0],rgb[1], 255] );
+
+        Render.FilledRect( 5, 490, 135, 45, Input.IsKeyPressed(0x20) ? [ 10, 10, 10, 113 ] : [ 10, 10, 10, 68 ]);
+        Render.StringCustom( 71, 485, 3, "_____", [rgb[2],rgb[0],rgb[1], 255], font);
+}
+
+Cheat.RegisterCallback("Draw", "wasdindicator")
 
 var should_switch = false;
 function AWPswitch(){
